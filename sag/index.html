@@ -51,6 +51,13 @@
   .card.ok{border-left:3px solid var(--verde)}
   .card-head{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:2px; gap:6px}
   .equipo{font-size:12.5px; font-weight:600; line-height:1.2}
+  .otras-title{font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); margin:26px 0 4px}
+  .otras-sub{font-size:11px; color:var(--dim); margin-bottom:10px}
+  .otras-tabla{width:100%; border-collapse:collapse; font-size:12px; background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden}
+  .otras-tabla th{text-align:left; font-weight:600; color:var(--dim); font-size:10px; letter-spacing:1px; text-transform:uppercase; padding:8px 10px; border-bottom:1px solid var(--line)}
+  .otras-tabla td{padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; line-height:1.35}
+  .otras-tabla tr:last-child td{border-bottom:none}
+  .otras-tabla .mono{font-family:ui-monospace,monospace; font-size:11px; color:var(--dim); white-space:nowrap}
   .tags{display:flex; flex-wrap:wrap; gap:4px; margin-top:4px}
   .tag{font-size:9px; font-weight:700; letter-spacing:.5px; padding:1px 6px; border-radius:4px; white-space:nowrap; line-height:1.4}
   .tag.br{border:1.5px solid var(--text); color:var(--text)}
@@ -106,6 +113,8 @@
     <div class="empty">Cargando datos del Sheet…</div>
   </div>
 
+  <div id="otrasWrap"></div>
+
   <div class="footer" id="footer">Última actualización: — · Se refresca automáticamente cada 30 segundos</div>
 
 <script>
@@ -159,14 +168,15 @@ function pillText(av, bloqueado){
 function agruparPorOT(datos){
   const mapa = {};
   datos.forEach(d=>{
-    if(!mapa[d.ot]){
-      mapa[d.ot] = {
+    const kOT = d.ot + "|" + grupoDe(d.respons);
+    if(!mapa[kOT]){
+      mapa[kOT] = {
         ot:d.ot, equipo:d.equipo, hrsTotal:0, hrsGanadas:0, horasReal:0,
         actividades:0, completadas:0, enProceso:0, sinIniciar:0,
         bloqueado:"", enTerreno:[], respons:d.respons||"", alerta:false
       };
     }
-    const g = mapa[d.ot];
+    const g = mapa[kOT];
     g.hrsTotal += d.hrs;
     g.hrsGanadas += d.hrs * d.avance / 100;
     g.horasReal += d.horasReal||0;
@@ -190,7 +200,9 @@ function agruparPorOT(datos){
   }));
 }
 
-const esApoyo = r => /apoyo/i.test(r||"");
+const grupoDe = r => /apoyo/i.test(r||"") ? "apoyo" : (/otra/i.test(r||"") ? "otras" : (/anglo|tercero/i.test(r||"") ? "anglo" : "belray"));
+const ETQ = {belray:"BEL-RAY", apoyo:"APOYO AA", anglo:"ANGLO + TERCEROS", otras:"OTRAS"};
+const esApoyo = r => grupoDe(r)!=="belray";
 let filtro = "todas", ultimosDatos = [];
 function setFiltro(f){ filtro=f; render(ultimosDatos); }
 window.setFiltro = setFiltro;
@@ -210,13 +222,18 @@ function resumen(datos){
   };
 }
 
-function render(datosActividades){
-  ultimosDatos = datosActividades;
-  const hayApoyo = datosActividades.some(d=>esApoyo(d.respons));
-  const datosBR = datosActividades.filter(d=>!esApoyo(d.respons));
-  const datosAA = datosActividades.filter(d=>esApoyo(d.respons));
+function render(todosLosDatos){
+  ultimosDatos = todosLosDatos;
+  const datosOtras = todosLosDatos.filter(d=>grupoDe(d.respons)==="otras");
+  const datosActividades = todosLosDatos.filter(d=>grupoDe(d.respons)!=="otras");
+  renderOtras(datosOtras);
+  const datosBR = datosActividades.filter(d=>grupoDe(d.respons)==="belray");
+  const datosAA = datosActividades.filter(d=>grupoDe(d.respons)==="apoyo");
+  const datosAN = datosActividades.filter(d=>grupoDe(d.respons)==="anglo");
+  const hayApoyo = datosAA.length>0 || datosAN.length>0;
   const R = resumen(datosBR);              // CUMPLIMIENTO = solo actividades Bel-Ray
   const A = resumen(datosAA);
+  const N = resumen(datosAN);
   const personas = [...new Set(agruparPorOT(datosActividades).flatMap(o=>o.enTerreno))].length;
 
   const tag = hayApoyo ? " Bel-Ray" : "";
@@ -232,14 +249,16 @@ function render(datosActividades){
     <div class="kpi"><div class="label">Personas en terreno</div><div class="value">${personas}</div></div>
     ${hayApoyo ? `<div class="kpi" style="border-style:dashed"><div class="label">Apoyo AA · avance</div><div class="value">${A.avance}<small>%</small></div></div>
     <div class="kpi" style="border-style:dashed"><div class="label">Apoyo AA · OT completadas</div><div class="value">${A.completas}<small>/${A.total}</small></div></div>` : ""}
+    ${datosAN.length ? `<div class="kpi" style="border-style:dashed"><div class="label">Anglo + Terceros · avance</div><div class="value">${N.avance}<small>%</small></div></div>
+    <div class="kpi" style="border-style:dashed"><div class="label">Anglo + Terceros · OT completadas</div><div class="value">${N.completas}<small>/${N.total}</small></div></div>` : ""}
   `;
 
   const fb = document.getElementById("filtroResp");
   if(fb){
     const b=(k,t)=>`<button onclick="setFiltro('${k}')" style="cursor:pointer;font:inherit;font-size:12px;padding:5px 12px;border-radius:8px;border:1px solid ${filtro===k?'var(--acento,#4da3ff)':'#243049'};background:${filtro===k?'#10233f':'transparent'};color:${filtro===k?'#4da3ff':'#8A97AD'}">${t}</button>`;
-    fb.innerHTML = hayApoyo ? b('todas','Todas')+" "+b('belray','Bel-Ray')+" "+b('apoyo','Apoyo AA') : "";
+    fb.innerHTML = hayApoyo ? b('todas','Todas')+" "+b('belray','Bel-Ray')+(datosAA.length?" "+b('apoyo','Apoyo AA'):"")+(datosAN.length?" "+b('anglo','Anglo + Terceros'):"") : "";
   }
-  const base = filtro==="belray" ? datosBR : (filtro==="apoyo" ? datosAA : datosActividades);
+  const base = filtro==="belray" ? datosBR : (filtro==="apoyo" ? datosAA : (filtro==="anglo" ? datosAN : datosActividades));
   const ots = agruparPorOT(base);
 
   // Ordena: bloqueadas primero, luego por avance ascendente
@@ -267,7 +286,7 @@ function render(datosActividades){
           </div>
           <span class="pill ${nv}">${pillText(o.avance, o.bloqueado)}</span>
         </div>
-        ${(o.respons||o.alerta) ? `<div class="tags" style="min-height:18px">${o.respons?`<span class="tag ${esApoyo(o.respons)?'aa':'br'}">${esApoyo(o.respons)?'APOYO AA':'BEL-RAY'}</span>`:''}${o.alerta?'<span class="tag obs">⚠ OBS. PLANIF.</span>':''}</div>` : '<div class="tags" style="min-height:18px"></div>'}
+        ${(o.respons||o.alerta) ? `<div class="tags" style="min-height:18px">${o.respons?`<span class="tag ${grupoDe(o.respons)==='belray'?'br':'aa'}">${ETQ[grupoDe(o.respons)]}</span>`:''}${o.alerta?'<span class="tag obs">⚠ OBS. PLANIF.</span>':''}</div>` : '<div class="tags" style="min-height:18px"></div>'}
         <div class="actividad">${detalle}</div>
         <div class="prog-wrap">
           <div class="prog-top">
@@ -369,6 +388,8 @@ function parseCSV(texto){
     bloqueado: headers.findIndex(h=>h.includes("bloqueado")||h.includes("pausado")),
     duracionReal: headers.findIndex(h=>h.includes("duraci")),
     respons: headers.findIndex(h=>h==="responsabilidad"),
+    estado: headers.findIndex(h=>h==="estado"),
+    obs: headers.findIndex(h=>h.startsWith("observaci")),
     alerta: headers.findIndex(h=>h.startsWith("alerta")),
   };
   const filas = [];
@@ -386,6 +407,8 @@ function parseCSV(texto){
       criticidad: c[idx.criticidad]||"",
       bloqueado: idx.bloqueado>=0 ? (c[idx.bloqueado]||"") : "",
       respons: idx.respons>=0 ? (c[idx.respons]||"").trim() : "",
+      estado: idx.estado>=0 ? (c[idx.estado]||"").trim() : "",
+      obs: idx.obs>=0 ? (c[idx.obs]||"").trim() : "",
       alerta: idx.alerta>=0 ? /^s[ií]/i.test((c[idx.alerta]||"").trim()) : false,
       enTerreno: [] // se llena desde la hoja REGISTRO_NFC (ver Apps Script)
     });
@@ -415,9 +438,31 @@ function tick(){
   document.getElementById("clock").textContent = ahora;
 }
 
+// ====== OTRAS ACTIVIDADES (Responsabilidad = "Otras": tienen OT pero no están en el Gantt) ======
+function renderOtras(filas){
+  const wrap = document.getElementById("otrasWrap");
+  if(!wrap) return;
+  if(!filas.length){ wrap.innerHTML = ""; return; }
+  const lista = filas.slice().sort((a,b)=>{
+    const sa = /^\d+$/.test(a.ot) ? 0 : 1, sb = /^\d+$/.test(b.ot) ? 0 : 1;
+    return sa-sb || a.ot.localeCompare(b.ot);
+  });
+  wrap.innerHTML = `
+    <div class="otras-title">Otras actividades · ${lista.length}</div>
+    <div class="otras-sub">No están en la carta Gantt. No se incluyen en el cumplimiento.</div>
+    <table class="otras-tabla">
+      <thead><tr><th>OT</th><th>Equipo</th><th>Actividad</th><th>Estado</th><th>Avance</th></tr></thead>
+      <tbody>${lista.map(f=>`<tr>
+        <td class="mono">${f.ot && f.ot!=="-" ? f.ot : "Sin OT"}</td><td>${f.equipo}</td>
+        <td>${f.actividad}${f.obs?`<div style="color:var(--dim);font-size:11px;margin-top:2px">${f.obs}</div>`:""}</td>
+        <td>${f.estado||"—"}</td><td>${f.avance}%</td></tr>`).join("")}</tbody>
+    </table>`;
+}
+
 // Init
 tick(); setInterval(tick, 1000);
 cargarSheet(); setInterval(cargarSheet, REFRESH_MS);
+
 </script>
 </body>
 </html>

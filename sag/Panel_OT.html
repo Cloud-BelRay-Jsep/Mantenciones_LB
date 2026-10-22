@@ -67,6 +67,16 @@
   .act-top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; gap:8px}
   .act-name{font-size:13.5px; font-weight:600}
   .act-resp{font-size:11px; color:var(--dim)}
+  .lub-box{margin-top:16px}
+  .lub-row{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px}
+  .lub-punto{font-size:12px; color:var(--muted); line-height:1.35}
+  .lub-main{display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-top:4px}
+  .lub-nombre{font-size:14px; font-weight:600; line-height:1.25}
+  .lub-marca{font-size:10px; color:var(--dim); font-weight:600; letter-spacing:.5px; text-transform:uppercase; margin-right:6px}
+  .lub-cant{font-size:15px; font-weight:700; white-space:nowrap}
+  .lub-cant small{font-size:11px; font-weight:500; color:var(--muted)}
+  .lub-pend{font-size:12px; color:var(--ambar)}
+  .lub-obs{font-size:11px; color:var(--dim); margin-top:4px; line-height:1.35}
   .act-pct{font-size:15px; font-weight:700; font-variant-numeric:tabular-nums; flex-shrink:0}
   .bar{height:7px; background:var(--panel2); border-radius:6px; overflow:hidden}
   .bar-fill{height:100%; border-radius:6px; transition:width 0.6s ease}
@@ -230,6 +240,8 @@ const CAPTURA_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuKIv4
 const NFC_CSV_URL     = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuKIv4RpPLmGUOHTrClUnWR1MpW7RLIVczjE4MfweIp-KeuwoaPtnfQVpL2ohNXqitH4b93zFO9xPV/pub?gid=109866302&single=true&output=csv";
 // Publica la pestaña CERTIFICACIONES igual que las otras (Archivo > Compartir > Publicar en la web > CSV) y pega su link aquí:
 const CERTS_CSV_URL   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuKIv4RpPLmGUOHTrClUnWR1MpW7RLIVczjE4MfweIp-KeuwoaPtnfQVpL2ohNXqitH4b93zFO9xPV/pub?gid=1733484865&single=true&output=csv";
+// Pestaña LUBRICANTES_OT publicada como CSV (OT, Equipo, Punto, Marca, Lubricante, Cantidad, Unidad, Observación)
+const LUBRICANTES_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuKIv4RpPLmGUOHTrClUnWR1MpW7RLIVczjE4MfweIp-KeuwoaPtnfQVpL2ohNXqitH4b93zFO9xPV/pub?gid=1903420084&single=true&output=csv";
 const DOCS_TERRENO_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuKIv4RpPLmGUOHTrClUnWR1MpW7RLIVczjE4MfweIp-KeuwoaPtnfQVpL2ohNXqitH4b93zFO9xPV/pub?gid=2126357148&single=true&output=csv";
 const REFRESH_MS = 20000;
 
@@ -273,23 +285,30 @@ function encontrarHeader(lineas, clave){
 // y término más tardío entre todas las tareas de cada OT.
 const GANTT_FECHAS = {
   "4015989511": ["26-10-2026 10:00","26-10-2026 14:00"],
-  "4014794992": ["26-10-2026 10:00","30-10-2026 19:30"],
+  "4014794992": ["26-10-2026 10:00","26-10-2026 20:00"],
   "4016182667": ["26-10-2026 10:00","27-10-2026 02:00"],
+  "4016568295": ["26-10-2026 13:00","27-10-2026 01:00"],
   "4014794996": ["26-10-2026 13:00","26-10-2026 19:00"],
+  "4014794993": ["26-10-2026 13:30","30-10-2026 09:30"],
   "4014795001": ["26-10-2026 14:00","26-10-2026 16:00"],
-  "4015904691": ["26-10-2026 14:30","27-10-2026 12:30"],
+  "4015904691": ["26-10-2026 15:30","27-10-2026 13:30"],
+  "4010660939": ["26-10-2026 17:00","27-10-2026 01:00"],
   "4009618975": ["26-10-2026 18:00","27-10-2026 06:00"],
+  "4016843245": ["27-10-2026 01:00","27-10-2026 09:00"],
   "4016182714": ["27-10-2026 02:00","27-10-2026 18:00"],
-  "4014679902": ["27-10-2026 12:30","28-10-2026 08:30"],
+  "4017015596": ["27-10-2026 09:00","27-10-2026 21:00"],
+  "4014679902": ["27-10-2026 12:30","28-10-2026 10:30"],
   "4017023272": ["27-10-2026 18:00","28-10-2026 00:00"],
   "4016182732": ["28-10-2026 00:00","28-10-2026 16:00"],
   "4016182590": ["28-10-2026 07:00","28-10-2026 23:00"],
-  "4015904673": ["28-10-2026 08:30","29-10-2026 08:30"],
   "4015989510": ["28-10-2026 09:30","28-10-2026 13:30"],
   "4017183194": ["28-10-2026 16:00","29-10-2026 08:00"],
+  "4015904730": ["28-10-2026 19:30","28-10-2026 21:30"],
   "4016182682": ["28-10-2026 23:00","29-10-2026 11:00"],
+  "4015791552": ["29-10-2026 04:00","31-10-2026 04:00"],
   "4015485899": ["29-10-2026 08:00","29-10-2026 12:00"],
-  "4014794993": ["29-10-2026 08:30","30-10-2026 08:30"],
+  "4015904673": ["29-10-2026 08:30","30-10-2026 08:30"],
+  "4010660947": ["29-10-2026 08:30","29-10-2026 09:30"],
   "4016182680": ["29-10-2026 11:00","29-10-2026 23:00"],
   "4015485898": ["29-10-2026 12:00","29-10-2026 16:00"],
   "4016181966": ["29-10-2026 16:00","29-10-2026 20:00"],
@@ -345,6 +364,29 @@ async function cargarCaptura(){
     });
   }
   return filas;
+}
+
+async function cargarLubricantes(){
+  if(!LUBRICANTES_CSV_URL) return [];
+  try{
+    const res = await fetch(LUBRICANTES_CSV_URL + "&_=" + Date.now());
+    const lineas = (await res.text()).split("\n").filter(l=>l.trim());
+    const hIdx = encontrarHeader(lineas, "lubricante");
+    const h = parseLinea(lineas[hIdx]).map(x=>x.trim().toLowerCase());
+    const f = n => h.findIndex(x=>x===n || x.startsWith(n));
+    const ix = {ot:f("ot"), equipo:f("equipo"), punto:f("punto"), marca:f("marca"), lub:f("lubricante"),
+                cant:f("cantidad"), unidad:f("unidad"), obs:f("observaci")};
+    const g = (c,i)=> i>=0 ? (c[i]||"").trim() : "";
+    const out = [];
+    for(let i=hIdx+1;i<lineas.length;i++){
+      const c = parseLinea(lineas[i]);
+      const ot = g(c,ix.ot).replace(/\.0$/,"");
+      if(!ot) continue;
+      out.push({ot, equipo:g(c,ix.equipo), punto:g(c,ix.punto), marca:g(c,ix.marca), lub:g(c,ix.lub),
+                cant:g(c,ix.cant), unidad:g(c,ix.unidad), obs:g(c,ix.obs)});
+    }
+    return out;
+  }catch(e){ return []; }
 }
 
 async function cargarNFC(){
@@ -667,28 +709,44 @@ function tarjetaOT(o){
   const {clase, etiqueta} = estadoOT(o);
   return `
     <a class="ot-pick ${clase}${esApoyo(o)?' apoyo':''}" href="?ot=${encodeURIComponent(o.ot)}">
-      <div class="n">OT ${o.ot} — ${o.equipo} <span class="ot-tag">${etiqueta}</span>${badgeResp(o.respons)}${o.alerta?'<span class="alerta-badge">⚠ Obs. planificación</span>':''}</div>
+      <div class="n">OT ${o.ot} — ${o.equipo} <span class="ot-tag">${etiqueta}</span>${badgesOT(o)}${o.alerta?'<span class="alerta-badge">⚠ Obs. planificación</span>':''}</div>
       <div class="s">${o.actividad}${o.componente ? ' · '+o.componente : ''} · ${o.avance}%</div>
     </a>`;
 }
 
+function grupoDe(r){
+  r = String(r||"");
+  if(/apoyo/i.test(r)) return "apoyo";
+  if(/otra/i.test(r)) return "otras";
+  if(/anglo|tercero/i.test(r)) return "anglo";
+  return "belray";
+}
+const ETQ_GRUPO = {belray:"BEL-RAY", apoyo:"APOYO AA", anglo:"ANGLO + TERCEROS", otras:"OTRAS"};
 function badgeResp(r){
   if(!r) return "";
-  const aa = /apoyo/i.test(r);
-  return `<span class="resp-badge ${aa?'aa':'br'}">${aa?'APOYO AA':'BEL-RAY'}</span>`;
+  const g = grupoDe(r);
+  return `<span class="resp-badge ${g==='belray'?'br':'aa'}">${ETQ_GRUPO[g]}</span>`;
 }
-function esApoyo(o){ return /apoyo/i.test(o.respons||""); }
+function badgesOT(o){
+  const gs = o.grupos && o.grupos.length ? o.grupos : (o.respons?[grupoDe(o.respons)]:[]);
+  return ["belray","apoyo","anglo","otras"].filter(g=>gs.includes(g)).map(g=>`<span class="resp-badge ${g==='belray'?'br':'aa'}">${ETQ_GRUPO[g]}</span>`).join("");
+}
+function esApoyo(o){ // OT sin ninguna actividad Bel-Ray → borde punteado
+  const gs = o.grupos && o.grupos.length ? o.grupos : [grupoDe(o.respons)];
+  return !gs.includes("belray");
+}
 let filtroResp = "todas";
 function cambiarFiltro(f){ filtroResp=f; renderVista(); }
 window.cambiarFiltro = cambiarFiltro;
 function otsFiltradas(){
-  return otsGlobal.filter(o=> filtroResp==="todas" || (filtroResp==="apoyo" ? esApoyo(o) : !esApoyo(o)));
+  return otsGlobal.filter(o=> filtroResp==="todas" || (o.grupos||[]).includes(filtroResp));
 }
 function filtroHtml(){
-  const hayApoyo = otsGlobal.some(esApoyo);
-  if(!hayApoyo) return "";
+  const hayOtros = otsGlobal.some(o=>(o.grupos||[]).some(g=>g!=="belray"));
+  if(!hayOtros) return "";
   const b=(k,t)=>`<button class="vt-btn ${filtroResp===k?'activo':''}" onclick="cambiarFiltro('${k}')">${t}</button>`;
-  return `<div class="filtro-resp">${b('todas','Todas')}${b('belray','Bel-Ray')}${b('apoyo','Apoyo AA')}</div>`;
+  const hay = g => otsGlobal.some(o=>(o.grupos||[]).includes(g));
+  return `<div class="filtro-resp">${b('todas','Todas')}${hay('belray')?b('belray','Bel-Ray'):''}${hay('apoyo')?b('apoyo','Apoyo AA'):''}${hay('anglo')?b('anglo','Anglo + Terceros'):''}${hay('otras')?b('otras','Otras'):''}</div>`;
 }
 let otsGlobal = [];
 let vistaActual = "lista";
@@ -800,9 +858,9 @@ function renderVistaGantt(cont){
       const hFin = `${String(o.fechaTermino.getHours()).padStart(2,"0")}:${String(o.fechaTermino.getMinutes()).padStart(2,"0")}`;
       barsHtml += `
         <a class="gantt-bar ${clase}${esApoyo(o)?' apoyo':''}" href="?ot=${encodeURIComponent(o.ot)}"
-           title="OT ${o.ot} — ${o.equipo} · ${o.actividad}${o.componente?' · '+o.componente:''} · ${hIni}–${hFin} · ${etiqueta} · ${o.avance}% · ${esApoyo(o)?'APOYO AA':'BEL-RAY'}"
+           title="OT ${o.ot} — ${o.equipo} · ${o.actividad}${o.componente?' · '+o.componente:''} · ${hIni}–${hFin} · ${etiqueta} · ${o.avance}% · ${(o.grupos||[]).map(g=>ETQ_GRUPO[g]).join(' / ')}"
            style="left:${left}px; width:${width}px; top:${i*(ALTO_FILA+6)}px">
-          <span class="gb-nombre">OT ${o.ot} — ${o.equipo} ${esApoyo(o)?'· APOYO AA':'· BEL-RAY'}${o.alerta?' · ⚠':''}</span>
+          <span class="gb-nombre">OT ${o.ot} — ${o.equipo} · ${(o.grupos||[]).map(g=>ETQ_GRUPO[g]).join(' / ')}${o.alerta?' · ⚠':''}</span>
           <span class="gb-actividad">${o.actividad}${o.componente ? ' · '+o.componente : ''}</span>
           <span class="gb-hora">${hIni}–${hFin} · ${o.avance}%</span>
         </a>`;
@@ -832,11 +890,12 @@ function renderVistaGantt(cont){
   cont.innerHTML = html;
 }
 
-function render(actividades, personas){
+function render(actividades, personas, lubs){
+  lubs = (lubs||[]).filter(l=>l.ot===OT_SELECCIONADA);
   actividades = actividades.slice().sort((a,b)=>a.orden-b.orden);
   const eq = actividades[0].equipo;
   document.getElementById("tituloOT").textContent = "OT " + OT_SELECCIONADA;
-  document.getElementById("subOT").innerHTML = eq + " · Anglo American Los Bronces " + badgeResp(actividades[0].respons);
+  document.getElementById("subOT").innerHTML = eq + " · Anglo American Los Bronces " + [...new Set(actividades.map(a=>grupoDe(a.respons)))].map(g=>`<span class="resp-badge ${g==='belray'?'br':'aa'}">${ETQ_GRUPO[g]}</span>`).join("");
 
   const hrsTot = actividades.reduce((s,a)=>s+a.hrs,0);
   const avanceGlobal = actividades.length>0 ? Math.round(actividades.reduce((s,a)=>s+a.avance,0)/actividades.length) : 0;
@@ -895,6 +954,21 @@ function render(actividades, personas){
           <div class="metric"><div class="v">${unicas}</div><div class="l">Personas distintas</div></div>
           <div class="metric"><div class="v">${personasOT.length}</div><div class="l">Entradas totales</div></div>
           <div class="metric"><div class="v">${promDur}</div><div class="l">Duración promedio</div></div>
+        </div>
+
+        <div class="lub-box">
+          <div class="section-title">Lubricantes y volúmenes</div>
+          ${lubs.length===0 ? '<div class="empty" style="padding:14px">Sin información de lubricante para esta OT.</div>' :
+            lubs.map(l=>`
+            <div class="lub-row">
+              <div class="lub-punto">${l.punto||"—"}${l.equipo?` · ${l.equipo}`:""}</div>
+              <div class="lub-main">
+                ${l.lub ? `<div class="lub-nombre">${l.marca?`<span class="lub-marca">${l.marca}</span>`:""}${l.lub}</div>`
+                        : `<div class="lub-pend">Lubricante por definir en terreno</div>`}
+                ${l.cant ? `<div class="lub-cant">${l.cant} <small>${l.unidad||""}</small></div>` : (l.lub ? `<div class="lub-pend">Volumen por definir</div>` : "")}
+              </div>
+              ${l.obs ? `<div class="lub-obs">${l.obs}</div>` : ""}
+            </div>`).join("")}
         </div>
       </div>
 
@@ -984,18 +1058,19 @@ let huboRenderExitoso = false;
 
 async function cargarTodo(){
   try{
-    const [captura, nfc, certs] = await Promise.all([cargarCaptura(), cargarNFC(), cargarCerts()]);
+    const [captura, nfc, certs, lubs] = await Promise.all([cargarCaptura(), cargarNFC(), cargarCerts(), cargarLubricantes()]);
     certsData = certs;
 
     if(!OT_SELECCIONADA){
       const vistas={}, otsUnicas=[];
       captura.forEach(a=>{
+        if(!a.ot || a.ot==="-" || /^sin\s*ot$/i.test(a.ot)) return;   // actividades sin OT no tienen panel propio
         if(!vistas[a.ot]){
           const g = GANTT_FECHAS[a.ot];
           vistas[a.ot] = { ot:a.ot, equipo:a.equipo, actividad:a.actividad, componente:a.componente,
                             fechaInicio: g ? parseFechaHoraCL(g[0]) : null,
                             fechaTermino: g ? parseFechaHoraCL(g[1]) : null,
-                            hrsTotal:0, hrsGanadas:0, bloqueado:"", respons:a.respons, alerta:false };
+                            hrsTotal:0, hrsGanadas:0, bloqueado:"", respons:a.respons, grupos:[], alerta:false };
           otsUnicas.push(vistas[a.ot]);
         }
         const g = vistas[a.ot];
@@ -1003,6 +1078,7 @@ async function cargarTodo(){
         g.hrsGanadas += a.hrs * a.avance / 100;
         if(a.bloqueado && !g.bloqueado) g.bloqueado = a.bloqueado;
         if(a.alerta) g.alerta = true;
+        { const gg = grupoDe(a.respons); if(!g.grupos.includes(gg)) g.grupos.push(gg); }
       });
       otsUnicas.forEach(o=>{ o.avance = o.hrsTotal>0 ? Math.round(o.hrsGanadas/o.hrsTotal*100) : 0; });
       renderSelector(otsUnicas);
@@ -1018,7 +1094,7 @@ async function cargarTodo(){
       actualizarFooter("sin datos para esta OT");
       return;
     }
-    render(actividades, nfc);
+    render(actividades, nfc, lubs);
     huboRenderExitoso = true;
     actualizarFooter("en vivo");
   }catch(e){
