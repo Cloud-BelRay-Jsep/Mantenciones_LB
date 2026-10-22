@@ -51,6 +51,11 @@
   .card.ok{border-left:3px solid var(--verde)}
   .card-head{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:2px; gap:6px}
   .equipo{font-size:12.5px; font-weight:600; line-height:1.2}
+  .tags{display:flex; flex-wrap:wrap; gap:4px; margin-top:4px}
+  .tag{font-size:9px; font-weight:700; letter-spacing:.5px; padding:1px 6px; border-radius:4px; white-space:nowrap; line-height:1.4}
+  .tag.br{border:1.5px solid var(--text); color:var(--text)}
+  .tag.aa{border:1.5px dashed var(--dim); color:var(--dim)}
+  .tag.obs{border:1px solid #E3B341; color:#E3B341}
   .ot{font-size:9.5px; color:var(--dim); font-family:ui-monospace,monospace; margin-top:1px}
   .pill{font-size:9px; font-weight:700; padding:2px 7px; border-radius:14px; white-space:nowrap; flex-shrink:0}
   .pill.crit{background:var(--rojoBg); color:var(--rojo)}
@@ -257,11 +262,12 @@ function render(datosActividades){
       <div class="card ${nv}">
         <div class="card-head">
           <div>
-            <div class="equipo">${o.equipo} ${o.respons?`<span style="font-size:9px;font-weight:700;letter-spacing:.6px;padding:1px 6px;border-radius:4px;border:1.5px ${esApoyo(o.respons)?'dashed #8A97AD':'solid #E8EDF6'};color:${esApoyo(o.respons)?'#8A97AD':'#E8EDF6'};vertical-align:middle">${esApoyo(o.respons)?'APOYO AA':'BEL-RAY'}</span>`:""}${o.alerta?' <span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;border:1px solid #E3B341;color:#E3B341">⚠ Obs. planificación</span>':""}</div>
+            <div class="equipo">${o.equipo}</div>
             <div class="ot">OT ${o.ot}</div>
           </div>
           <span class="pill ${nv}">${pillText(o.avance, o.bloqueado)}</span>
         </div>
+        ${(o.respons||o.alerta) ? `<div class="tags" style="min-height:18px">${o.respons?`<span class="tag ${esApoyo(o.respons)?'aa':'br'}">${esApoyo(o.respons)?'APOYO AA':'BEL-RAY'}</span>`:''}${o.alerta?'<span class="tag obs">⚠ OBS. PLANIF.</span>':''}</div>` : '<div class="tags" style="min-height:18px"></div>'}
         <div class="actividad">${detalle}</div>
         <div class="prog-wrap">
           <div class="prog-top">
