@@ -51,6 +51,11 @@
   .card.ok{border-left:3px solid var(--verde)}
   .card-head{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:2px; gap:6px}
   .equipo{font-size:12.5px; font-weight:600; line-height:1.2}
+  .tags{display:flex; flex-wrap:wrap; gap:4px; margin-top:4px}
+  .tag{font-size:9px; font-weight:700; letter-spacing:.5px; padding:1px 6px; border-radius:4px; white-space:nowrap; line-height:1.4}
+  .tag.br{border:1.5px solid var(--text); color:var(--text)}
+  .tag.aa{border:1.5px dashed var(--dim); color:var(--dim)}
+  .tag.obs{border:1px solid #E3B341; color:#E3B341}
   .ot{font-size:9.5px; color:var(--dim); font-family:ui-monospace,monospace; margin-top:1px}
   .pill{font-size:9px; font-weight:700; padding:2px 7px; border-radius:14px; white-space:nowrap; flex-shrink:0}
   .pill.crit{background:var(--rojoBg); color:var(--rojo)}
@@ -85,7 +90,7 @@
   <div class="top">
     <div class="brand">
       <h1>PANEL MANTENCIÓN MAYOR</h1>
-      <span class="sub">Bel-Ray · Anglo American Los Bronces · Tareas Críticas</span>
+      <span class="sub">Bel-Ray · Anglo American Los Bronces · Molienda SAG · MM Octubre 2026</span>
     </div>
     <div class="status">
       <div class="live"><span class="dot"></span> EN VIVO</div>
@@ -95,7 +100,8 @@
 
   <div class="kpis" id="kpis"></div>
 
-  <div class="section-title">Frentes críticos en tiempo real</div>
+  <div class="section-title">Frentes de trabajo en tiempo real</div>
+  <div id="filtroResp" style="margin:0 0 12px"></div>
   <div class="grid" id="grid">
     <div class="empty">Cargando datos del Sheet…</div>
   </div>
@@ -111,8 +117,8 @@
 //    1) pestaña CAPTURA      > CSV  → pégala en SHEET_CSV_URL
 //    2) pestaña REGISTRO_NFC > CSV  → pégala en NFC_CSV_URL
 //  Si las dejas vacías, el panel usa datos de ejemplo.
-const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSdA3xg-NepBQFQy3QwQoRINx_AIP_-_ie2Clpq0lLLe56Fm1FokEW4A5VwTwiY13nYtXsBJQKde8wM/pub?gid=1096962834&single=true&output=csv";   // CAPTURA (tareas)
-const NFC_CSV_URL   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSdA3xg-NepBQFQy3QwQoRINx_AIP_-_ie2Clpq0lLLe56Fm1FokEW4A5VwTwiY13nYtXsBJQKde8wM/pub?gid=545760247&single=true&output=csv";   // REGISTRO_NFC (personas en terreno)
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuKIv4RpPLmGUOHTrClUnWR1MpW7RLIVczjE4MfweIp-KeuwoaPtnfQVpL2ohNXqitH4b93zFO9xPV/pub?gid=1096962834&single=true&output=csv";   // CAPTURA (tareas)
+const NFC_CSV_URL   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuKIv4RpPLmGUOHTrClUnWR1MpW7RLIVczjE4MfweIp-KeuwoaPtnfQVpL2ohNXqitH4b93zFO9xPV/pub?gid=109866302&single=true&output=csv";   // REGISTRO_NFC (personas en terreno)
 const REFRESH_MS = 30000; // 30 segundos
 
 // Datos de ejemplo (tu data real del 11-07) mientras conectas el Sheet
@@ -157,7 +163,7 @@ function agruparPorOT(datos){
       mapa[d.ot] = {
         ot:d.ot, equipo:d.equipo, hrsTotal:0, hrsGanadas:0, horasReal:0,
         actividades:0, completadas:0, enProceso:0, sinIniciar:0,
-        bloqueado:"", enTerreno:[]
+        bloqueado:"", enTerreno:[], respons:d.respons||"", alerta:false
       };
     }
     const g = mapa[d.ot];
@@ -169,6 +175,7 @@ function agruparPorOT(datos){
     else if(d.avance>0) g.enProceso++;
     else g.sinIniciar++;
     if(d.bloqueado && !g.bloqueado) g.bloqueado = d.bloqueado;
+    if(d.alerta) g.alerta = true;
     if(d.enTerreno && d.enTerreno.length) g.enTerreno = g.enTerreno.concat(d.enTerreno);
   });
   return Object.values(mapa).map(g=>({
@@ -178,36 +185,62 @@ function agruparPorOT(datos){
     horasReal: Math.round(g.horasReal*10)/10,
     actividades:g.actividades, completadas:g.completadas,
     enProceso:g.enProceso, sinIniciar:g.sinIniciar,
-    bloqueado:g.bloqueado, enTerreno:[...new Set(g.enTerreno)]
+    bloqueado:g.bloqueado, enTerreno:[...new Set(g.enTerreno)],
+    respons:g.respons, alerta:g.alerta
   }));
 }
 
+const esApoyo = r => /apoyo/i.test(r||"");
+let filtro = "todas", ultimosDatos = [];
+function setFiltro(f){ filtro=f; render(ultimosDatos); }
+window.setFiltro = setFiltro;
+
+function resumen(datos){
+  const ots = agruparPorOT(datos);
+  const hrs = ots.reduce((s,o)=>s+o.hrs,0);
+  const ganadas = datos.reduce((s,d)=>s+d.hrs*d.avance/100,0);
+  return {
+    ots, total:ots.length,
+    completas: ots.filter(o=>o.avance>=100 && !o.bloqueado).length,
+    enProceso: ots.filter(o=>o.avance>0 && o.avance<100 && !o.bloqueado).length,
+    sinIniciar: ots.filter(o=>o.avance===0 && !o.bloqueado).length,
+    pausadas: ots.filter(o=>o.bloqueado).length,
+    hrs, real: ots.reduce((s,o)=>s+o.horasReal,0),
+    avance: hrs>0 ? Math.round(ganadas/hrs*100) : 0
+  };
+}
+
 function render(datosActividades){
-  const ots = agruparPorOT(datosActividades);
+  ultimosDatos = datosActividades;
+  const hayApoyo = datosActividades.some(d=>esApoyo(d.respons));
+  const datosBR = datosActividades.filter(d=>!esApoyo(d.respons));
+  const datosAA = datosActividades.filter(d=>esApoyo(d.respons));
+  const R = resumen(datosBR);              // CUMPLIMIENTO = solo actividades Bel-Ray
+  const A = resumen(datosAA);
+  const personas = [...new Set(agruparPorOT(datosActividades).flatMap(o=>o.enTerreno))].length;
 
-  // ===== KPIs — panorama completo (todas las OT del Gantt) =====
-  const totalOT = ots.length;
-  const otCompletas = ots.filter(o=>o.avance>=100 && !o.bloqueado).length;
-  const otEnProceso = ots.filter(o=>o.avance>0 && o.avance<100 && !o.bloqueado).length;
-  const otSinIniciar = ots.filter(o=>o.avance===0 && !o.bloqueado).length;
-  const otBloqueadas = ots.filter(o=>o.bloqueado).length;
-  const hrsEstTotales = ots.reduce((s,o)=>s+o.hrs,0);
-  const hrsRealesTotales = ots.reduce((s,o)=>s+o.horasReal,0);
-  const personas = [...new Set(ots.flatMap(o=>o.enTerreno))].length;
-  const hrsGanadasTot = datosActividades.reduce((s,d)=>s+d.hrs*d.avance/100,0);
-  const avgGlobal = hrsEstTotales>0 ? Math.round(hrsGanadasTot/hrsEstTotales*100) : 0;
-
+  const tag = hayApoyo ? " Bel-Ray" : "";
   document.getElementById("kpis").innerHTML = `
-    <div class="kpi"><div class="label">Avance global</div><div class="value">${avgGlobal}<small>%</small></div></div>
-    <div class="kpi"><div class="label">OT totales</div><div class="value">${totalOT}</div></div>
-    <div class="kpi"><div class="label">Completadas</div><div class="value">${otCompletas}<small>/${totalOT}</small></div></div>
-    <div class="kpi"><div class="label">En proceso</div><div class="value">${otEnProceso}</div></div>
-    <div class="kpi"><div class="label">Sin iniciar</div><div class="value">${otSinIniciar}</div></div>
-    <div class="kpi"><div class="label">Bloqueadas</div><div class="value">${otBloqueadas}</div></div>
-    <div class="kpi"><div class="label">Hrs estimadas (Gantt)</div><div class="value">${hrsEstTotales.toFixed(1)}</div></div>
-    <div class="kpi"><div class="label">Hrs reales medidas</div><div class="value">${hrsRealesTotales.toFixed(1)}</div></div>
+    <div class="kpi"><div class="label">Cumplimiento${tag}</div><div class="value">${R.avance}<small>%</small></div></div>
+    <div class="kpi"><div class="label">OT${tag}</div><div class="value">${R.total}</div></div>
+    <div class="kpi"><div class="label">Completadas</div><div class="value">${R.completas}<small>/${R.total}</small></div></div>
+    <div class="kpi"><div class="label">En proceso</div><div class="value">${R.enProceso}</div></div>
+    <div class="kpi"><div class="label">Sin iniciar</div><div class="value">${R.sinIniciar}</div></div>
+    <div class="kpi"><div class="label">Pausadas</div><div class="value">${R.pausadas}</div></div>
+    <div class="kpi"><div class="label">Hrs estimadas (Gantt)</div><div class="value">${R.hrs.toFixed(1)}</div></div>
+    <div class="kpi"><div class="label">Hrs reales medidas</div><div class="value">${R.real.toFixed(1)}</div></div>
     <div class="kpi"><div class="label">Personas en terreno</div><div class="value">${personas}</div></div>
+    ${hayApoyo ? `<div class="kpi" style="border-style:dashed"><div class="label">Apoyo AA · avance</div><div class="value">${A.avance}<small>%</small></div></div>
+    <div class="kpi" style="border-style:dashed"><div class="label">Apoyo AA · OT completadas</div><div class="value">${A.completas}<small>/${A.total}</small></div></div>` : ""}
   `;
+
+  const fb = document.getElementById("filtroResp");
+  if(fb){
+    const b=(k,t)=>`<button onclick="setFiltro('${k}')" style="cursor:pointer;font:inherit;font-size:12px;padding:5px 12px;border-radius:8px;border:1px solid ${filtro===k?'var(--acento,#4da3ff)':'#243049'};background:${filtro===k?'#10233f':'transparent'};color:${filtro===k?'#4da3ff':'#8A97AD'}">${t}</button>`;
+    fb.innerHTML = hayApoyo ? b('todas','Todas')+" "+b('belray','Bel-Ray')+" "+b('apoyo','Apoyo AA') : "";
+  }
+  const base = filtro==="belray" ? datosBR : (filtro==="apoyo" ? datosAA : datosActividades);
+  const ots = agruparPorOT(base);
 
   // Ordena: bloqueadas primero, luego por avance ascendente
   ots.sort((a,b)=>{
@@ -234,6 +267,7 @@ function render(datosActividades){
           </div>
           <span class="pill ${nv}">${pillText(o.avance, o.bloqueado)}</span>
         </div>
+        ${(o.respons||o.alerta) ? `<div class="tags" style="min-height:18px">${o.respons?`<span class="tag ${esApoyo(o.respons)?'aa':'br'}">${esApoyo(o.respons)?'APOYO AA':'BEL-RAY'}</span>`:''}${o.alerta?'<span class="tag obs">⚠ OBS. PLANIF.</span>':''}</div>` : '<div class="tags" style="min-height:18px"></div>'}
         <div class="actividad">${detalle}</div>
         <div class="prog-wrap">
           <div class="prog-top">
@@ -334,6 +368,8 @@ function parseCSV(texto){
     criticidad: headers.findIndex(h=>h.includes("criticidad")),
     bloqueado: headers.findIndex(h=>h.includes("bloqueado")||h.includes("pausado")),
     duracionReal: headers.findIndex(h=>h.includes("duraci")),
+    respons: headers.findIndex(h=>h==="responsabilidad"),
+    alerta: headers.findIndex(h=>h.startsWith("alerta")),
   };
   const filas = [];
   for(let i=headerIdx+1;i<lineas.length;i++){
@@ -349,6 +385,8 @@ function parseCSV(texto){
       horasReal: idx.duracionReal>=0 ? parseNum(c[idx.duracionReal]) : 0,
       criticidad: c[idx.criticidad]||"",
       bloqueado: idx.bloqueado>=0 ? (c[idx.bloqueado]||"") : "",
+      respons: idx.respons>=0 ? (c[idx.respons]||"").trim() : "",
+      alerta: idx.alerta>=0 ? /^s[ií]/i.test((c[idx.alerta]||"").trim()) : false,
       enTerreno: [] // se llena desde la hoja REGISTRO_NFC (ver Apps Script)
     });
   }
