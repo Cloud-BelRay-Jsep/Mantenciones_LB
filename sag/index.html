@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel MM · Bel-Ray — Anglo American Los Bronces</title>
+<style>
+  :root{
+    --bg:#0B1220; --panel:#131C2E; --panel2:#1A2438; --line:#243049;
+    --text:#E8EDF6; --muted:#8A97AD; --dim:#5E6B82;
+    --verde:#3FB950; --verdeBg:#132819;
+    --ambar:#E3A008; --ambarBg:#2A2109;
+    --rojo:#F0616D; --rojoBg:#2A1216;
+    --azul:#3B82F6; --azulBg:#0E1D33;
+    --acento:#4FD1C5;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    padding:20px; min-height:100vh;
+  }
+  .top{
+    display:flex; justify-content:space-between; align-items:center;
+    border-bottom:1px solid var(--line); padding-bottom:14px; margin-bottom:18px;
+  }
+  .brand{display:flex; align-items:baseline; gap:12px}
+  .brand h1{font-size:20px; font-weight:600; letter-spacing:0.5px}
+  .brand .sub{font-size:12px; color:var(--muted)}
+  .status{display:flex; align-items:center; gap:18px; font-size:12px; color:var(--muted)}
+  .live{display:flex; align-items:center; gap:6px}
+  .dot{width:8px; height:8px; border-radius:50%; background:var(--verde); animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+  .clock{font-variant-numeric:tabular-nums; font-size:14px; color:var(--text)}
+
+  .kpis{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px}
+  .kpi{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px 12px}
+  .kpi .label{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.4px}
+  .kpi .value{font-size:24px; font-weight:700; margin-top:2px; font-variant-numeric:tabular-nums}
+  .kpi .value small{font-size:13px; color:var(--muted); font-weight:400}
+
+  .section-title{font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin:6px 0 12px}
+
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:8px}
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:8px;
+    padding:9px 11px; position:relative; overflow:hidden;
+  }
+  .card.crit{border-left:3px solid var(--rojo)}
+  .card.warn{border-left:3px solid var(--ambar)}
+  .card.ok{border-left:3px solid var(--verde)}
+  .card-head{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:2px; gap:6px}
+  .equipo{font-size:12.5px; font-weight:600; line-height:1.2}
+  .ot{font-size:9.5px; color:var(--dim); font-family:ui-monospace,monospace; margin-top:1px}
+  .pill{font-size:9px; font-weight:700; padding:2px 7px; border-radius:14px; white-space:nowrap; flex-shrink:0}
+  .pill.crit{background:var(--rojoBg); color:var(--rojo)}
+  .pill.warn{background:var(--ambarBg); color:var(--ambar)}
+  .pill.ok{background:var(--verdeBg); color:var(--verde)}
+  .actividad{font-size:10.5px; color:var(--muted); margin:3px 0 6px; line-height:1.3}
+
+  .prog-wrap{margin-bottom:4px}
+  .prog-top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:3px}
+  .prog-pct{font-size:16px; font-weight:700; font-variant-numeric:tabular-nums}
+  .prog-hrs{font-size:9.5px; color:var(--dim)}
+  .bar{height:6px; background:var(--panel2); border-radius:4px; overflow:hidden}
+  .bar-fill{height:100%; border-radius:4px; transition:width 0.6s ease}
+  .fill-ok{background:var(--verde)} .fill-warn{background:var(--ambar)} .fill-crit{background:var(--rojo)}
+
+  .terreno{display:flex; align-items:center; flex-wrap:wrap; gap:4px; padding-top:5px; margin-top:4px; border-top:1px solid var(--line); font-size:9.5px}
+  .terreno .icon{color:var(--acento); font-size:8px}
+  .persona{background:var(--azulBg); color:#7FB2F5; padding:1px 6px; border-radius:10px; font-size:9.5px; font-weight:500}
+  .en-terreno-tag{
+    position:absolute; top:14px; right:14px; display:none;
+  }
+
+  .empty{color:var(--dim); text-align:center; padding:40px; font-size:14px}
+  .footer{margin-top:24px; text-align:center; font-size:11px; color:var(--dim)}
+  @media(max-width:640px){
+    .kpis{grid-template-columns:repeat(2,1fr)}
+    .grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="brand">
+      <h1>PANEL MANTENCIÓN MAYOR</h1>
+      <span class="sub">Bel-Ray · Anglo American Los Bronces · Molienda SAG · MM Octubre 2026</span>
+    </div>
+    <div class="status">
+      <div class="live"><span class="dot"></span> EN VIVO</div>
+      <div class="clock" id="clock">--:--:--</div>
+    </div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="section-title">Frentes de trabajo en tiempo real</div>
+  <div id="filtroResp" style="margin:0 0 12px"></div>
+  <div class="grid" id="grid">
+    <div class="empty">Cargando datos del Sheet…</div>
+  </div>
+
+  <div class="footer" id="footer">Última actualización: — · Se refresca automáticamente cada 30 segundos</div>
+
+<script>
+// ============================================================
+//  CONFIGURACIÓN — pega las URLs de tus dos hojas publicadas
+// ============================================================
+//  Necesitas publicar DOS pestañas como CSV:
+//  Archivo > Compartir > Publicar en la web
+//    1) pestaña CAPTURA      > CSV  → pégala en SHEET_CSV_URL
+//    2) pestaña REGISTRO_NFC > CSV  → pégala en NFC_CSV_URL
+//  Si las dejas vacías, el panel usa datos de ejemplo.
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuKIv4RpPLmGUOHTrClUnWR1MpW7RLIVczjE4MfweIp-KeuwoaPtnfQVpL2ohNXqitH4b93zFO9xPV/pub?gid=1096962834&single=true&output=csv";   // CAPTURA (tareas)
+const NFC_CSV_URL   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuKIv4RpPLmGUOHTrClUnWR1MpW7RLIVczjE4MfweIp-KeuwoaPtnfQVpL2ohNXqitH4b93zFO9xPV/pub?gid=109866302&single=true&output=csv";   // REGISTRO_NFC (personas en terreno)
+const REFRESH_MS = 30000; // 30 segundos
+
+// Datos de ejemplo (tu data real del 11-07) mientras conectas el Sheet
+const DATOS_EJEMPLO = [
+  {equipo:"Molino SAG", ot:"4013457119", actividad:"Cambio sellos perimetrales MLS001 inferiores", avance:25, hrs:8, criticidad:"Alta", enTerreno:["D. Herrera","J. Molina"]},
+  {equipo:"Molino de Bolas N°2", ot:"4012442142", actividad:"Bombas y sistema de lubricación (17 sub-tareas)", avance:12, hrs:17, criticidad:"Alta", enTerreno:["F. Manqueche"]},
+  {equipo:"Molino SAG", ot:"4012441947", actividad:"Sello molino SAG cambio y lubricación alimentación", avance:0, hrs:4, criticidad:"Alta", enTerreno:[]},
+  {equipo:"Molino de Bolas N°1", ot:"4013457118", actividad:"Cambio sellos perimetrales MLB001", avance:100, hrs:30, criticidad:"Alta", enTerreno:[]},
+  {equipo:"Planta de Cal", ot:"4015377192", actividad:"Cambio de sellos y aceite", avance:0, hrs:6, criticidad:"Alta", enTerreno:[], bloqueado:"Sin MAF ni repuestos"},
+];
+
+function parseNum(raw){
+  let s = String(raw||"").trim().replace(",",".");
+  let v = parseFloat(s);
+  return isNaN(v) ? 0 : v;
+}
+
+function parseAvance(raw){
+  let s = String(raw||"").trim().replace("%","").replace(",",".");
+  let v = parseFloat(s);
+  if(isNaN(v)) return 0;
+  return Math.round(v);
+}
+
+function nivel(av, bloqueado){
+  if(bloqueado) return "warn";
+  if(av >= 100) return "ok";
+  if(av < 50) return "crit";
+  return "warn";
+}
+function pillText(av, bloqueado){
+  if(bloqueado) return "BLOQUEADO";
+  if(av >= 100) return "COMPLETADA";
+  if(av === 0) return "SIN INICIAR";
+  return "EN PROCESO";
+}
+
+function agruparPorOT(datos){
+  const mapa = {};
+  datos.forEach(d=>{
+    if(!mapa[d.ot]){
+      mapa[d.ot] = {
+        ot:d.ot, equipo:d.equipo, hrsTotal:0, hrsGanadas:0, horasReal:0,
+        actividades:0, completadas:0, enProceso:0, sinIniciar:0,
+        bloqueado:"", enTerreno:[], respons:d.respons||"", alerta:false
+      };
+    }
+    const g = mapa[d.ot];
+    g.hrsTotal += d.hrs;
+    g.hrsGanadas += d.hrs * d.avance / 100;
+    g.horasReal += d.horasReal||0;
+    g.actividades++;
+    if(d.avance>=100) g.completadas++;
+    else if(d.avance>0) g.enProceso++;
+    else g.sinIniciar++;
+    if(d.bloqueado && !g.bloqueado) g.bloqueado = d.bloqueado;
+    if(d.alerta) g.alerta = true;
+    if(d.enTerreno && d.enTerreno.length) g.enTerreno = g.enTerreno.concat(d.enTerreno);
+  });
+  return Object.values(mapa).map(g=>({
+    ot:g.ot, equipo:g.equipo,
+    avance: g.hrsTotal>0 ? Math.round(g.hrsGanadas/g.hrsTotal*100) : 0,
+    hrs: Math.round(g.hrsTotal*10)/10,
+    horasReal: Math.round(g.horasReal*10)/10,
+    actividades:g.actividades, completadas:g.completadas,
+    enProceso:g.enProceso, sinIniciar:g.sinIniciar,
+    bloqueado:g.bloqueado, enTerreno:[...new Set(g.enTerreno)],
+    respons:g.respons, alerta:g.alerta
+  }));
+}
+
+const esApoyo = r => /apoyo/i.test(r||"");
+let filtro = "todas", ultimosDatos = [];
+function setFiltro(f){ filtro=f; render(ultimosDatos); }
+window.setFiltro = setFiltro;
+
+function resumen(datos){
+  const ots = agruparPorOT(datos);
+  const hrs = ots.reduce((s,o)=>s+o.hrs,0);
+  const ganadas = datos.reduce((s,d)=>s+d.hrs*d.avance/100,0);
+  return {
+    ots, total:ots.length,
+    completas: ots.filter(o=>o.avance>=100 && !o.bloqueado).length,
+    enProceso: ots.filter(o=>o.avance>0 && o.avance<100 && !o.bloqueado).length,
+    sinIniciar: ots.filter(o=>o.avance===0 && !o.bloqueado).length,
+    pausadas: ots.filter(o=>o.bloqueado).length,
+    hrs, real: ots.reduce((s,o)=>s+o.horasReal,0),
+    avance: hrs>0 ? Math.round(ganadas/hrs*100) : 0
+  };
+}
+
+function render(datosActividades){
+  ultimosDatos = datosActividades;
+  const hayApoyo = datosActividades.some(d=>esApoyo(d.respons));
+  const datosBR = datosActividades.filter(d=>!esApoyo(d.respons));
+  const datosAA = datosActividades.filter(d=>esApoyo(d.respons));
+  const R = resumen(datosBR);              // CUMPLIMIENTO = solo actividades Bel-Ray
+  const A = resumen(datosAA);
+  const personas = [...new Set(agruparPorOT(datosActividades).flatMap(o=>o.enTerreno))].length;
+
+  const tag = hayApoyo ? " Bel-Ray" : "";
+  document.getElementById("kpis").innerHTML = `
+    <div class="kpi"><div class="label">Cumplimiento${tag}</div><div class="value">${R.avance}<small>%</small></div></div>
+    <div class="kpi"><div class="label">OT${tag}</div><div class="value">${R.total}</div></div>
+    <div class="kpi"><div class="label">Completadas</div><div class="value">${R.completas}<small>/${R.total}</small></div></div>
+    <div class="kpi"><div class="label">En proceso</div><div class="value">${R.enProceso}</div></div>
+    <div class="kpi"><div class="label">Sin iniciar</div><div class="value">${R.sinIniciar}</div></div>
+    <div class="kpi"><div class="label">Pausadas</div><div class="value">${R.pausadas}</div></div>
+    <div class="kpi"><div class="label">Hrs estimadas (Gantt)</div><div class="value">${R.hrs.toFixed(1)}</div></div>
+    <div class="kpi"><div class="label">Hrs reales medidas</div><div class="value">${R.real.toFixed(1)}</div></div>
+    <div class="kpi"><div class="label">Personas en terreno</div><div class="value">${personas}</div></div>
+    ${hayApoyo ? `<div class="kpi" style="border-style:dashed"><div class="label">Apoyo AA · avance</div><div class="value">${A.avance}<small>%</small></div></div>
+    <div class="kpi" style="border-style:dashed"><div class="label">Apoyo AA · OT completadas</div><div class="value">${A.completas}<small>/${A.total}</small></div></div>` : ""}
+  `;
+
+  const fb = document.getElementById("filtroResp");
+  if(fb){
+    const b=(k,t)=>`<button onclick="setFiltro('${k}')" style="cursor:pointer;font:inherit;font-size:12px;padding:5px 12px;border-radius:8px;border:1px solid ${filtro===k?'var(--acento,#4da3ff)':'#243049'};background:${filtro===k?'#10233f':'transparent'};color:${filtro===k?'#4da3ff':'#8A97AD'}">${t}</button>`;
+    fb.innerHTML = hayApoyo ? b('todas','Todas')+" "+b('belray','Bel-Ray')+" "+b('apoyo','Apoyo AA') : "";
+  }
+  const base = filtro==="belray" ? datosBR : (filtro==="apoyo" ? datosAA : datosActividades);
+  const ots = agruparPorOT(base);
+
+  // Ordena: bloqueadas primero, luego por avance ascendente
+  ots.sort((a,b)=>{
+    const pa = a.bloqueado?0:1, pb = b.bloqueado?0:1;
+    if(pa!==pb) return pa-pb;
+    return a.avance - b.avance;
+  });
+
+  const grid = document.getElementById("grid");
+  if(!ots.length){ grid.innerHTML = '<div class="empty">No hay OT cargadas.</div>'; return; }
+
+  grid.innerHTML = ots.map(o=>{
+    const nv = nivel(o.avance, o.bloqueado);
+    const gente = (o.enTerreno && o.enTerreno.length)
+      ? o.enTerreno.map(p=>`<span class="persona">${p}</span>`).join(" ")
+      : '';
+    const detalle = o.bloqueado ? `⚠ ${o.bloqueado}` : `${o.actividades} act. · ${o.completadas} OK`;
+    return `
+      <div class="card ${nv}">
+        <div class="card-head">
+          <div>
+            <div class="equipo">${o.equipo} ${o.respons?`<span style="font-size:9px;font-weight:700;letter-spacing:.6px;padding:1px 6px;border-radius:4px;border:1.5px ${esApoyo(o.respons)?'dashed #8A97AD':'solid #E8EDF6'};color:${esApoyo(o.respons)?'#8A97AD':'#E8EDF6'};vertical-align:middle">${esApoyo(o.respons)?'APOYO AA':'BEL-RAY'}</span>`:""}${o.alerta?' <span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;border:1px solid #E3B341;color:#E3B341">⚠ Obs. planificación</span>':""}</div>
+            <div class="ot">OT ${o.ot}</div>
+          </div>
+          <span class="pill ${nv}">${pillText(o.avance, o.bloqueado)}</span>
+        </div>
+        <div class="actividad">${detalle}</div>
+        <div class="prog-wrap">
+          <div class="prog-top">
+            <span class="prog-pct">${o.avance}%</span>
+            <span class="prog-hrs">${o.hrs}h est · ${o.horasReal}h real</span>
+          </div>
+          <div class="bar"><div class="bar-fill fill-${nv}" style="width:${o.avance}%"></div></div>
+        </div>
+        ${gente ? `<div class="terreno"><span class="icon">●</span>${gente}</div>` : ""}
+      </div>
+    `;
+  }).join("");
+}
+
+// ====== CONEXIÓN AL SHEET (dos hojas, cruce por OT) ======
+async function cargarSheet(){
+  if(!SHEET_CSV_URL){
+    render(DATOS_EJEMPLO);
+    actualizarFooter("datos de ejemplo");
+    return;
+  }
+  try{
+    // 1) tareas críticas desde CAPTURA
+    const resTareas = await fetch(SHEET_CSV_URL + "&_=" + Date.now());
+    const tareas = parseCSV(await resTareas.text());
+
+    // 2) personas en terreno desde REGISTRO_NFC (si está configurada)
+    let personas = [];
+    if(NFC_CSV_URL){
+      const resNFC = await fetch(NFC_CSV_URL + "&_=" + Date.now());
+      personas = parseNFC(await resNFC.text());
+    }
+
+    // 3) cruce por OT: a cada tarea le asigna quién está en terreno en esa OT
+    tareas.forEach(t=>{
+      t.enTerreno = personas
+        .filter(p=> p.ot === t.ot && p.estado === "en terreno")
+        .map(p=> p.persona);
+    });
+
+    render(tareas);
+    actualizarFooter(NFC_CSV_URL ? "Sheet + NFC en vivo" : "Sheet en vivo (sin NFC)");
+  }catch(e){
+    render(DATOS_EJEMPLO);
+    actualizarFooter("error de conexión, mostrando ejemplo");
+  }
+}
+
+// Parser de REGISTRO_NFC → lista de {persona, ot, estado}
+function parseNFC(texto){
+  const lineas = texto.split("\n").filter(l=>l.trim());
+  if(!lineas.length) return [];
+  let headerIdx = 0;
+  for(let i=0;i<Math.min(5,lineas.length);i++){
+    const cols = parseLinea(lineas[i]).map(c=>c.trim().toLowerCase());
+    if(cols.some(c=>c.includes("persona"))){ headerIdx = i; break; }
+  }
+  const headers = parseLinea(lineas[headerIdx]).map(h=>h.trim().toLowerCase());
+  const idx = {
+    persona: headers.findIndex(h=>h.includes("persona")),
+    ot: headers.findIndex(h=>h==="ot"),
+    estado: headers.findIndex(h=>h.includes("estado")),
+  };
+  const res = [];
+  for(let i=headerIdx+1;i<lineas.length;i++){
+    const c = parseLinea(lineas[i]);
+    if(!c[idx.persona]) continue;
+    res.push({
+      persona: c[idx.persona]||"",
+      ot: String(c[idx.ot]||"").trim(),
+      estado: String(c[idx.estado]||"").trim().toLowerCase()
+    });
+  }
+  return res;
+}
+
+// Parser CSV → filtra solo críticas. Busca la fila de encabezados real
+// (tu Sheet tiene un título en la fila 1, los headers están en la fila 2).
+function parseCSV(texto){
+  const lineas = texto.split("\n").filter(l=>l.trim());
+  // Busca entre las primeras 5 líneas la que contenga "equipo" → esa es el header real
+  let headerIdx = 0;
+  for(let i=0;i<Math.min(5,lineas.length);i++){
+    const cols = parseLinea(lineas[i]).map(c=>c.trim().toLowerCase());
+    if(cols.some(c=>c.includes("equipo"))){ headerIdx = i; break; }
+  }
+  const headers = parseLinea(lineas[headerIdx]).map(h=>h.trim().toLowerCase());
+  const idx = {
+    equipo: headers.findIndex(h=>h.includes("equipo")),
+    ot: headers.findIndex(h=>h==="ot"),
+    actividad: (function(){
+      let i = headers.findIndex(h=>h==="actividad");
+      if(i<0) i = headers.findIndex(h=>h.includes("actividad") && h!=="tipo actividad");
+      return i;
+    })(),
+    avance: headers.findIndex(h=>h.includes("avance")),
+    hrs: headers.findIndex(h=>h.includes("hrs")||h.includes("total")),
+    criticidad: headers.findIndex(h=>h.includes("criticidad")),
+    bloqueado: headers.findIndex(h=>h.includes("bloqueado")||h.includes("pausado")),
+    duracionReal: headers.findIndex(h=>h.includes("duraci")),
+    respons: headers.findIndex(h=>h==="responsabilidad"),
+    alerta: headers.findIndex(h=>h.startsWith("alerta")),
+  };
+  const filas = [];
+  for(let i=headerIdx+1;i<lineas.length;i++){
+    const c = parseLinea(lineas[i]);
+    if(!c[idx.equipo] || !c[idx.equipo].trim()) continue;
+    // TODAS las actividades del Gantt (ya no se filtra solo por criticidad)
+    filas.push({
+      equipo: c[idx.equipo]||"",
+      ot: c[idx.ot]||"",
+      actividad: c[idx.actividad]||"",
+      avance: parseAvance(c[idx.avance]),
+      hrs: parseNum(c[idx.hrs]),
+      horasReal: idx.duracionReal>=0 ? parseNum(c[idx.duracionReal]) : 0,
+      criticidad: c[idx.criticidad]||"",
+      bloqueado: idx.bloqueado>=0 ? (c[idx.bloqueado]||"") : "",
+      respons: idx.respons>=0 ? (c[idx.respons]||"").trim() : "",
+      alerta: idx.alerta>=0 ? /^s[ií]/i.test((c[idx.alerta]||"").trim()) : false,
+      enTerreno: [] // se llena desde la hoja REGISTRO_NFC (ver Apps Script)
+    });
+  }
+  return filas;
+}
+function parseLinea(linea){
+  const res=[]; let cur=""; let dentro=false;
+  for(let i=0;i<linea.length;i++){
+    const ch=linea[i];
+    if(ch==='"'){ dentro=!dentro; }
+    else if(ch===',' && !dentro){ res.push(cur); cur=""; }
+    else cur+=ch;
+  }
+  res.push(cur);
+  return res.map(s=>s.trim());
+}
+
+function actualizarFooter(fuente){
+  const ahora = new Date().toLocaleTimeString("es-CL",{timeZone:"America/Santiago"});
+  document.getElementById("footer").textContent =
+    `Última actualización: ${ahora} · Fuente: ${fuente} · Se refresca cada 30 segundos`;
+}
+
+function tick(){
+  const ahora = new Date().toLocaleTimeString("es-CL",{timeZone:"America/Santiago"});
+  document.getElementById("clock").textContent = ahora;
+}
+
+// Init
+tick(); setInterval(tick, 1000);
+cargarSheet(); setInterval(cargarSheet, REFRESH_MS);
+</script>
+</body>
+</html>

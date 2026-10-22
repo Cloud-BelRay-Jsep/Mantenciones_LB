@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registro NFC</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:#0B1220; color:#E8EDF6;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    min-height:100vh; display:flex; align-items:flex-start; justify-content:center; padding:24px 20px;
+  }
+  .wrap{max-width:520px; width:100%; text-align:center}
+  .circle{
+    width:70px; height:70px; border-radius:50%; margin:0 auto 18px;
+    display:flex; align-items:center; justify-content:center; font-size:30px;
+  }
+  .spin{
+    width:40px; height:40px; border:3px solid #243049; border-top-color:#4FD1C5;
+    border-radius:50%; margin:0 auto 18px; animation:spin 0.9s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .tag{font-size:12px; color:#8A97AD; text-transform:uppercase; letter-spacing:1.5px}
+  .persona{font-size:24px; font-weight:600; margin-top:8px}
+  .sub{font-size:14px; color:#8A97AD; margin-top:6px}
+  .hora{font-size:40px; font-weight:700; margin-top:14px; font-variant-numeric:tabular-nums}
+  .wait{font-size:12px; color:#5E6B82; margin-top:22px}
+  .error{color:#F0616D; font-size:14px; margin-top:10px}
+
+  .lista-ots{text-align:left}
+  .dia-header{
+    font-size:12px; font-weight:700; color:#4FD1C5; text-transform:uppercase; letter-spacing:1px;
+    margin:20px 0 10px; padding-bottom:5px; border-bottom:1px solid #243049;
+  }
+  .dia-header:first-child{margin-top:0}
+  .timeline-item{display:flex; align-items:stretch; gap:10px; margin-bottom:8px}
+  .time-badge{
+    flex-shrink:0; width:56px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-size:12px; font-weight:700; color:#E8EDF6; background:#1A2438;
+    border-radius:9px; font-variant-numeric:tabular-nums; padding:4px 0;
+  }
+  .time-badge .hasta{font-size:7px; color:#5E6B82; font-weight:400; text-transform:uppercase; margin:1px 0}
+  .ot-pick{
+    flex:1; min-width:0; display:block; text-decoration:none; color:#E8EDF6; background:#131C2E;
+    border:1px solid #243049; border-left:4px solid #243049; border-radius:11px; padding:11px 13px;
+    cursor:pointer;
+  }
+  .ot-pick.completada{border-left-color:#3FB950; background:linear-gradient(90deg,#13281922 0%,#131C2E 14%)}
+  .ot-pick.en-proceso{border-left-color:#E3A008; background:linear-gradient(90deg,#2A210922 0%,#131C2E 14%)}
+  .ot-pick.sin-iniciar{border-left-color:#F0616D; background:linear-gradient(90deg,#2A121622 0%,#131C2E 14%)}
+  .ot-pick.pausada{border-left-color:#5BC8E8; background:linear-gradient(90deg,#5BC8E822 0%,#131C2E 14%)}
+  .ot-pick .n{font-size:13.5px; font-weight:600}
+  .ot-pick .s{font-size:11.5px; color:#8A97AD; margin-top:3px}
+  .ot-tag{font-size:9px; font-weight:700; padding:2px 7px; border-radius:9px; margin-left:6px; vertical-align:middle}
+  .ot-pick.completada .ot-tag{background:#132819; color:#3FB950}
+  .ot-pick.en-proceso .ot-tag{background:#2A2109; color:#E3A008}
+  .ot-pick.sin-iniciar .ot-tag{background:#2A1216; color:#F0616D}
+  .ot-pick.pausada .ot-tag{background:#5BC8E830; color:#5BC8E8}
+</style>
+</head>
+<body>
+  <div class="wrap" id="app">
+    <div class="spin"></div>
+    <div class="tag">Procesando…</div>
+  </div>
+
+<script>
+// ============================================================
+//  CONFIGURACIÓN — tu URL de Apps Script (base, sin parámetros)
+// ============================================================
+const EXEC_URL = "https://script.google.com/macros/s/AKfycbwkBv26x65d6WHE1Mc3NyMGDRex9sSAjHzkOhh7kTIKwUWVMtFdFSZMGJFLHv-lyqZG/exec";
+const CAPTURA_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuKIv4RpPLmGUOHTrClUnWR1MpW7RLIVczjE4MfweIp-KeuwoaPtnfQVpL2ohNXqitH4b93zFO9xPV/pub?gid=1096962834&single=true&output=csv";
+
+// Ventanas de tiempo planificadas del Gantt (OT: [inicio, término]).
+const GANTT_FECHAS = {
+  "4015989511": ["26-10-2026 10:00","26-10-2026 14:00"],
+  "4014794992": ["26-10-2026 10:00","30-10-2026 19:30"],
+  "4016182667": ["26-10-2026 10:00","27-10-2026 02:00"],
+  "4014794996": ["26-10-2026 13:00","26-10-2026 19:00"],
+  "4014795001": ["26-10-2026 14:00","26-10-2026 16:00"],
+  "4015904691": ["26-10-2026 14:30","27-10-2026 12:30"],
+  "4009618975": ["26-10-2026 18:00","27-10-2026 06:00"],
+  "4016182714": ["27-10-2026 02:00","27-10-2026 18:00"],
+  "4014679902": ["27-10-2026 12:30","28-10-2026 08:30"],
+  "4017023272": ["27-10-2026 18:00","28-10-2026 00:00"],
+  "4016182732": ["28-10-2026 00:00","28-10-2026 16:00"],
+  "4016182590": ["28-10-2026 07:00","28-10-2026 23:00"],
+  "4015904673": ["28-10-2026 08:30","29-10-2026 08:30"],
+  "4015989510": ["28-10-2026 09:30","28-10-2026 13:30"],
+  "4017183194": ["28-10-2026 16:00","29-10-2026 08:00"],
+  "4016182682": ["28-10-2026 23:00","29-10-2026 11:00"],
+  "4015485899": ["29-10-2026 08:00","29-10-2026 12:00"],
+  "4014794993": ["29-10-2026 08:30","30-10-2026 08:30"],
+  "4016182680": ["29-10-2026 11:00","29-10-2026 23:00"],
+  "4015485898": ["29-10-2026 12:00","29-10-2026 16:00"],
+  "4016181966": ["29-10-2026 16:00","29-10-2026 20:00"],
+  "4016568296": ["29-10-2026 20:00","30-10-2026 00:00"],
+  "4016073710": ["30-10-2026 19:30","31-10-2026 07:30"],
+};
+const DIAS_SEMANA = ["DOM","LUN","MAR","MIÉ","JUE","VIE","SÁB"];
+
+function parseFechaHoraCL(s){
+  if(!s) return null;
+  const m = String(s).trim().match(/^(\d{1,2})-(\d{1,2})-(\d{4})\s+(\d{1,2}):(\d{2})/);
+  if(!m) return null;
+  const d = new Date(parseInt(m[3]), parseInt(m[2])-1, parseInt(m[1]), parseInt(m[4]), parseInt(m[5]));
+  return isNaN(d) ? null : d;
+}
+
+// Llave secreta para autorizar el teléfono central. Cámbiala por algo tuyo.
+// Para autorizar un teléfono UNA VEZ, abre en ese teléfono:
+//   registro.html?setup=belray-mm-2026
+const DEVICE_KEY = "belray-sag-2026-q7m4";
+const AUTH_STORAGE = "belray_sag_device_auth";
+
+const params = new URLSearchParams(window.location.search);
+const nombre = (params.get("nombre")||"").trim();
+const apellido = (params.get("apellido")||"").trim();
+const tipo = (params.get("tipo")||"").trim().toLowerCase();
+const ot = (params.get("ot")||"").trim();
+const persona = (nombre + " " + apellido).trim();
+const app = document.getElementById("app");
+
+function horaAhora(){
+  return new Date().toLocaleTimeString("es-CL",{timeZone:"America/Santiago",hour:"2-digit",minute:"2-digit"});
+}
+
+async function llamarExec(qs){
+  // no-cors: no podemos leer la respuesta, pero la petición SÍ llega y se ejecuta en el servidor
+  try {
+    await fetch(EXEC_URL + qs, {mode:"no-cors", cache:"no-store"});
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+function parseLinea(linea){
+  const res=[]; let cur=""; let dentro=false;
+  for(let i=0;i<linea.length;i++){
+    const ch=linea[i];
+    if(ch==='"'){ dentro=!dentro; }
+    else if(ch===',' && !dentro){ res.push(cur); cur=""; }
+    else cur+=ch;
+  }
+  res.push(cur);
+  return res.map(s=>s.trim());
+}
+
+async function leerOTs(){
+  const res = await fetch(CAPTURA_CSV_URL + "&_=" + Date.now());
+  const texto = await res.text();
+  const lineas = texto.split("\n").filter(l=>l.trim());
+  let headerIdx = 0;
+  for(let i=0;i<Math.min(5,lineas.length);i++){
+    const cols = parseLinea(lineas[i]).map(c=>c.trim().toLowerCase());
+    if(cols.some(c=>c.includes("equipo"))){ headerIdx = i; break; }
+  }
+  const headers = parseLinea(lineas[headerIdx]).map(h=>h.trim().toLowerCase());
+  const idx = {
+    equipo: headers.findIndex(h=>h.includes("equipo")),
+    ot: headers.findIndex(h=>h==="ot"),
+    actividad: (function(){
+      let i = headers.findIndex(h=>h==="actividad");
+      if(i<0) i = headers.findIndex(h=>h.includes("actividad") && h!=="tipo actividad");
+      return i;
+    })(),
+    componente: headers.findIndex(h=>h.includes("componente")),
+    avance: headers.findIndex(h=>h.includes("avance")),
+    hrs: headers.findIndex(h=>h.includes("hrs")||h.includes("total")),
+    bloqueado: headers.findIndex(h=>h.includes("bloqueado")||h.includes("pausado")),
+    respons: headers.findIndex(h=>h==="responsabilidad"),
+  };
+  function parseAvance(raw){
+    let s = String(raw||"").trim().replace("%","").replace(",",".");
+    let v = parseFloat(s);
+    return isNaN(v) ? 0 : Math.round(v);
+  }
+  function parseNum(raw){
+    let s = String(raw||"").trim().replace(",",".");
+    let v = parseFloat(s);
+    return isNaN(v) ? 0 : v;
+  }
+
+  const grupos = {};
+  for(let i=headerIdx+1;i<lineas.length;i++){
+    const c = parseLinea(lineas[i]);
+    const otVal = (c[idx.ot]||"").trim();
+    if(!otVal || !c[idx.equipo]) continue;
+    const hrs = parseNum(c[idx.hrs]);
+    const av = parseAvance(c[idx.avance]);
+    const bloqueado = idx.bloqueado>=0 ? (c[idx.bloqueado]||"") : "";
+    if(!grupos[otVal]){
+      const g = GANTT_FECHAS[otVal];
+      grupos[otVal] = {
+        ot:otVal, equipo:c[idx.equipo]||"", actividad:c[idx.actividad]||"",
+        componente: idx.componente>=0 ? (c[idx.componente]||"") : "",
+        fechaInicio: g ? parseFechaHoraCL(g[0]) : null,
+        fechaTermino: g ? parseFechaHoraCL(g[1]) : null,
+        hrsTotal:0, hrsGanadas:0, bloqueado:"",
+        respons: idx.respons>=0 ? (c[idx.respons]||"").trim() : ""
+      };
+    }
+    const grupo = grupos[otVal];
+    grupo.hrsTotal += hrs;
+    grupo.hrsGanadas += hrs*av/100;
+    if(bloqueado && !grupo.bloqueado) grupo.bloqueado = bloqueado;
+  }
+  const ots = Object.values(grupos);
+  ots.forEach(o=>{ o.avance = o.hrsTotal>0 ? Math.round(o.hrsGanadas/o.hrsTotal*100) : 0; });
+  return ots;
+}
+
+function estadoOT(o){
+  if(o.bloqueado) return {clase:"pausada", etiqueta:"PAUSADA"};
+  if(o.avance>=100) return {clase:"completada", etiqueta:"COMPLETADA"};
+  if(o.avance===0) return {clase:"sin-iniciar", etiqueta:"SIN INICIAR"};
+  return {clase:"en-proceso", etiqueta:"EN PROCESO"};
+}
+
+function mostrarConfirmacion(tipoR, sub, extra){
+  const esEnt = tipoR === "entrada";
+  const color = esEnt ? "#3FB950" : "#F0616D";
+  const bg = esEnt ? "#132819" : "#2A1216";
+  const icono = esEnt ? "▼" : "▲";
+  const titulo = esEnt ? "Entrada registrada" : "Salida registrada";
+  app.innerHTML = `
+    <div class="circle" style="background:${bg};color:${color}">${icono}</div>
+    <div class="tag">${titulo}</div>
+    <div class="persona">${persona}</div>
+    ${sub ? `<div class="sub">${sub}</div>` : ""}
+    ${extra ? `<div class="sub">${extra}</div>` : ""}
+    <div class="hora" style="color:${color}">${horaAhora()}</div>
+    <div class="wait">Listo · acerca otro llavero cuando quieras</div>
+  `;
+}
+
+function mostrarError(msg){
+  app.innerHTML = `
+    <div class="circle" style="background:#2A1216;color:#F0616D">✕</div>
+    <div class="error">${msg}</div>
+  `;
+}
+
+async function mostrarMenu(){
+  app.innerHTML = `
+    <div class="tag">Entrada · elige tu OT</div>
+    <div class="persona" style="margin-bottom:16px">${persona}</div>
+    <div id="lista" class="lista-ots"><div class="spin"></div></div>
+  `;
+  try {
+    const ots = await leerOTs();
+    const lista = document.getElementById("lista");
+    if (!ots.length) { lista.innerHTML = '<div class="error">No hay OTs cargadas.</div>'; return; }
+
+    const conFecha = ots.filter(o=>o.fechaInicio && o.fechaTermino).sort((a,b)=>a.fechaInicio-b.fechaInicio);
+    const sinFecha = ots.filter(o=>!o.fechaInicio || !o.fechaTermino);
+
+    function tarjeta(o){
+      const {clase, etiqueta} = estadoOT(o);
+      return `
+        <a class="ot-pick ${clase}" data-ot="${o.ot}">
+          <div class="n">OT ${o.ot} — ${o.equipo} <span class="ot-tag">${etiqueta}</span>${o.respons?`<span class="ot-tag" style="background:transparent;border:1px ${/apoyo/i.test(o.respons)?'dashed':'solid'} #8A97AD;color:#C9D3E3">${/apoyo/i.test(o.respons)?'APOYO AA':'BEL-RAY'}</span>`:''}</div>
+          <div class="s">${o.actividad}${o.componente ? ' · '+o.componente : ''} · ${o.avance}%</div>
+        </a>`;
+    }
+
+    let html = '';
+    if(conFecha.length){
+      const porDia = {}, ordenDias = [];
+      conFecha.forEach(o=>{
+        const key = o.fechaInicio.toDateString();
+        if(!porDia[key]){ porDia[key]=[]; ordenDias.push(key); }
+        porDia[key].push(o);
+      });
+      html += ordenDias.map(key=>{
+        const items = porDia[key];
+        const d = items[0].fechaInicio;
+        const diaTxt = `${DIAS_SEMANA[d.getDay()]} ${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}`;
+        return `
+          <div class="dia-header">${diaTxt}</div>
+          ${items.map(o=>{
+            const hIni = `${String(o.fechaInicio.getHours()).padStart(2,"0")}:${String(o.fechaInicio.getMinutes()).padStart(2,"0")}`;
+            const hFin = `${String(o.fechaTermino.getHours()).padStart(2,"0")}:${String(o.fechaTermino.getMinutes()).padStart(2,"0")}`;
+            return `
+            <div class="timeline-item">
+              <div class="time-badge">${hIni}<span class="hasta">hasta</span>${hFin}</div>
+              ${tarjeta(o)}
+            </div>`;
+          }).join("")}
+        `;
+      }).join("");
+    }
+    if(sinFecha.length){
+      html += `<div class="dia-header" style="color:#5E6B82">SIN FECHA EN EL GANTT</div>`;
+      html += sinFecha.map(o=>`<div style="margin-bottom:8px">${tarjeta(o)}</div>`).join("");
+    }
+    lista.innerHTML = html;
+
+    lista.querySelectorAll(".ot-pick").forEach(el=>{
+      el.addEventListener("click", async ()=>{
+        const otSel = el.getAttribute("data-ot");
+        app.innerHTML = '<div class="spin"></div><div class="tag">Registrando…</div>';
+        const qs = `?nombre=${encodeURIComponent(nombre)}&apellido=${encodeURIComponent(apellido)}&tipo=entrada&ot=${encodeURIComponent(otSel)}`;
+        const ok = await llamarExec(qs);
+        if (ok) mostrarConfirmacion("entrada", "OT " + otSel, "");
+        else mostrarError("No se pudo conectar con el servidor. Revisa tu conexión a internet e intenta de nuevo.");
+      });
+    });
+  } catch(e) {
+    mostrarError("No se pudo cargar la lista de OTs. Revisa tu conexión.");
+  }
+}
+
+async function procesar(){
+  // ── MODO RESET: quita la autorización de este teléfono ──
+  if (params.get("reset") === "1") {
+    localStorage.removeItem(AUTH_STORAGE);
+    app.innerHTML = `
+      <div class="circle" style="background:#2A1216;color:#F0616D">↺</div>
+      <div class="tag">Autorización eliminada</div>
+      <div class="sub" style="margin-top:10px">Este teléfono ya no puede registrar. Usa el link de setup para autorizar otro.</div>
+    `;
+    return;
+  }
+
+  // ── MODO SETUP: autoriza este teléfono como central ──
+  const setupKey = params.get("setup");
+  if (setupKey) {
+    if (setupKey === DEVICE_KEY) {
+      localStorage.setItem(AUTH_STORAGE, "1");
+      app.innerHTML = `
+        <div class="circle" style="background:#132819;color:#3FB950">✓</div>
+        <div class="tag">Dispositivo autorizado</div>
+        <div class="sub" style="margin-top:10px">Este teléfono ya puede registrar entradas y salidas.</div>
+      `;
+    } else {
+      mostrarError("Llave de configuración incorrecta.");
+    }
+    return;
+  }
+
+  // ── VERIFICA que este teléfono esté autorizado ──
+  if (localStorage.getItem(AUTH_STORAGE) !== "1") {
+    mostrarError("Dispositivo no autorizado. Usa el teléfono central designado para el registro.");
+    return;
+  }
+
+  if (!nombre || !tipo) { mostrarError("Llavero sin datos válidos."); return; }
+
+  if (tipo === "entrada" && !ot) {
+    await mostrarMenu();
+    return;
+  }
+
+  if (tipo === "entrada" && ot) {
+    const qs = `?nombre=${encodeURIComponent(nombre)}&apellido=${encodeURIComponent(apellido)}&tipo=entrada&ot=${encodeURIComponent(ot)}`;
+    const ok = await llamarExec(qs);
+    if (ok) mostrarConfirmacion("entrada", "OT " + ot, "");
+    else mostrarError("No se pudo conectar con el servidor. Revisa tu conexión a internet e intenta de nuevo.");
+    return;
+  }
+
+  if (tipo === "salida") {
+    const qs = `?nombre=${encodeURIComponent(nombre)}&apellido=${encodeURIComponent(apellido)}&tipo=salida`;
+    const ok = await llamarExec(qs);
+    if (ok) mostrarConfirmacion("salida", "", "");
+    else mostrarError("No se pudo conectar con el servidor. Revisa tu conexión a internet e intenta de nuevo.");
+    return;
+  }
+
+  mostrarError("Parámetros no reconocidos.");
+}
+
+procesar();
+</script>
+</body>
+</html>

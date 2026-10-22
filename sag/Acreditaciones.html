@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acreditaciones · Bel-Ray — Anglo American Los Bronces</title>
+<style>
+  :root{
+    --bg:#0B1220; --panel:#131C2E; --panel2:#1A2438; --line:#243049;
+    --text:#E8EDF6; --muted:#8A97AD; --dim:#5E6B82;
+    --verde:#3FB950; --verdeBg:#132819;
+    --ambar:#E3A008; --ambarBg:#2A2109;
+    --rojo:#F0616D; --rojoBg:#2A1216;
+    --azul:#3B82F6; --azulBg:#0E1D33;
+    --acento:#4FD1C5;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    padding:24px; min-height:100vh;
+  }
+  .top{display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid var(--line); padding-bottom:16px; margin-bottom:22px}
+  .brand{display:flex; align-items:center; gap:16px}
+  .brand-logo{height:52px; width:auto; flex-shrink:0}
+  .brand-text{display:flex; flex-direction:column; gap:4px}
+  .brand .tag{font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px}
+  .brand h1{font-size:26px; font-weight:700}
+  .brand .sub{font-size:13px; color:var(--muted)}
+  .volver{display:flex; align-items:center; gap:6px; color:var(--muted); text-decoration:none; font-size:13px; background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:8px 16px}
+  .volver:hover{color:var(--acento); border-color:var(--acento)}
+
+  .buscador{margin-bottom:18px}
+  .buscador input{
+    width:100%; max-width:420px; background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:10px 14px; color:var(--text); font-size:14px; outline:none;
+  }
+  .buscador input:focus{border-color:var(--acento)}
+  .buscador input::placeholder{color:var(--dim)}
+
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:14px}
+  .persona-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:20px 14px; text-align:center; cursor:pointer; transition:border-color 0.15s, transform 0.15s;
+  }
+  .persona-card:hover{border-color:var(--acento); transform:translateY(-2px)}
+  .avatar{
+    width:56px; height:56px; border-radius:50%; margin:0 auto 12px;
+    background:var(--azulBg); display:flex; align-items:center; justify-content:center;
+    font-size:20px; font-weight:700; color:#7FB2F5;
+  }
+  .p-nombre{font-size:13px; font-weight:600; line-height:1.3}
+  .p-cargo{font-size:10.5px; color:var(--dim); margin-top:3px; line-height:1.3}
+  .p-docs{font-size:10px; color:var(--muted); margin-top:6px}
+
+  .empty{color:var(--dim); text-align:center; padding:40px; font-size:14px}
+  .footer{margin-top:24px; text-align:center; font-size:11px; color:var(--dim)}
+
+  .modal-overlay{position:fixed; inset:0; background:rgba(5,8,15,0.75); display:flex; align-items:center; justify-content:center; z-index:50; padding:20px}
+  .modal-box{background:var(--panel); border:1px solid var(--line); border-radius:14px; max-width:520px; width:100%; max-height:80vh; overflow-y:auto; padding:22px}
+  .modal-top{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px}
+  .modal-nombre{font-size:19px; font-weight:700}
+  .modal-cargo{font-size:13px; color:var(--muted); margin-top:2px}
+  .modal-close{background:var(--panel2); border:none; color:var(--text); width:28px; height:28px; border-radius:50%; cursor:pointer; font-size:16px; flex-shrink:0}
+  .cert-row{background:var(--panel2); border-radius:10px; padding:12px 14px; margin-bottom:8px}
+  .cert-top{display:flex; justify-content:space-between; align-items:center; gap:8px}
+  .cert-nombre{font-size:13.5px; font-weight:600}
+  .cert-pill{font-size:10px; font-weight:700; padding:3px 9px; border-radius:12px; white-space:nowrap}
+  .cert-fecha{font-size:11.5px; color:var(--dim); margin-top:4px}
+  .cert-link{font-size:11.5px; color:var(--acento); margin-top:6px; display:inline-block; text-decoration:none}
+  .cert-link:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="brand">
+      <img class="brand-logo" src="logo-belray.png" alt="Bel-Ray">
+      <div class="brand-text">
+        <span class="tag">Acreditaciones · Bel-Ray</span>
+        <h1>Personal y Documentos</h1>
+        <span class="sub">Anglo American Los Bronces</span>
+      </div>
+    </div>
+    <a class="volver" href="index.html" onclick="if(history.length>1){history.back();return false;}">← Volver al panel</a>
+  </div>
+
+  <div class="buscador">
+    <input type="text" id="buscador" placeholder="Buscar por nombre…" oninput="filtrar()">
+  </div>
+
+  <div id="grid" class="grid">
+    <div class="empty">Cargando personal…</div>
+  </div>
+
+  <div class="footer" id="footer">Cargando…</div>
+
+<script>
+// ============================================================
+//  CONFIGURACIÓN — misma base de PERSONAL_DOCUMENTOS del panel
+// ============================================================
+const CERTS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuKIv4RpPLmGUOHTrClUnWR1MpW7RLIVczjE4MfweIp-KeuwoaPtnfQVpL2ohNXqitH4b93zFO9xPV/pub?gid=1733484865&single=true&output=csv";
+
+let certsData = [];
+let personasUnicas = [];
+
+function parseLinea(linea){
+  const res=[]; let cur=""; let dentro=false;
+  for(let i=0;i<linea.length;i++){
+    const ch=linea[i];
+    if(ch==='"'){ dentro=!dentro; }
+    else if(ch===',' && !dentro){ res.push(cur); cur=""; }
+    else cur+=ch;
+  }
+  res.push(cur);
+  return res.map(s=>s.trim());
+}
+
+async function cargarCerts(){
+  if(!CERTS_CSV_URL) return [];
+  try{
+    const res = await fetch(CERTS_CSV_URL + "&_=" + Date.now());
+    const texto = await res.text();
+    const lineas = texto.split("\n").filter(l=>l.trim());
+    let hIdx = 0;
+    for(let i=0;i<Math.min(5,lineas.length);i++){
+      const cols = parseLinea(lineas[i]).map(c=>c.trim().toLowerCase());
+      if(cols.some(c=>c.includes("persona")||c.includes("nombres"))){ hIdx = i; break; }
+    }
+    const headers = parseLinea(lineas[hIdx]).map(h=>h.trim().toLowerCase());
+    function col(nombres){
+      for(const n of nombres){ const i = headers.indexOf(n); if(i>=0) return i; }
+      return -1;
+    }
+    const idx = {
+      persona: col(["persona","nombres"]),
+      cargo: col(["cargo"]),
+      cert: col(["documento","nombre_documento","documento_descripcion","tipo_documento"]),
+      emision: col(["fecha_emision"]),
+      vencimiento: col(["fecha_vencimiento"]),
+      activo: col(["documento_activo"]),
+      link: col(["link documento","link","url"]),
+    };
+    const filas=[];
+    for(let i=hIdx+1;i<lineas.length;i++){
+      const c = parseLinea(lineas[i]);
+      if(!c[idx.persona] || !c[idx.persona].trim()) continue;
+      if(idx.activo>=0 && String(c[idx.activo]).toLowerCase()==="false") continue;
+      filas.push({
+        persona:c[idx.persona]||"", cargo:idx.cargo>=0?(c[idx.cargo]||""):"",
+        cert:idx.cert>=0?(c[idx.cert]||"Documento"):"Documento",
+        emision:idx.emision>=0?(c[idx.emision]||""):"",
+        vencimiento:idx.vencimiento>=0?(c[idx.vencimiento]||""):"",
+        link:idx.link>=0?(c[idx.link]||""):""
+      });
+    }
+    return filas;
+  }catch(e){ return []; }
+}
+
+function normName(s){
+  return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .trim().toLowerCase().replace(/\s+/g," ");
+}
+function personaCoincide(a, b){
+  const na = normName(a), nb = normName(b);
+  if(!na || !nb) return false;
+  if(na===nb) return true;
+  const ta = na.split(" "), tb = nb.split(" ");
+  const corto = ta.length<=tb.length ? ta : tb;
+  const largo = ta.length<=tb.length ? tb : ta;
+  return corto.every(t=>largo.includes(t));
+}
+
+function formatFecha(d){
+  if(!(d instanceof Date) || isNaN(d)) return "";
+  const dd=String(d.getDate()).padStart(2,"0"), mm=String(d.getMonth()+1).padStart(2,"0");
+  return `${dd}-${mm}-${d.getFullYear()}`;
+}
+function parseFechaFlexible(s){
+  if(!s) return null;
+  let d = new Date(s);
+  if(!isNaN(d)) return d;
+  const p = String(s).split("-");
+  if(p.length===3){ d = new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0])); if(!isNaN(d)) return d; }
+  return null;
+}
+function estadoCert(vencStr){
+  const venc = parseFechaFlexible(vencStr);
+  if(!venc) return {txt:"SIN VENCIMIENTO", col:"var(--dim)", bg:"var(--panel)"};
+  const hoy = new Date();
+  const dias = Math.round((venc-hoy)/86400000);
+  if(dias<0) return {txt:"VENCIDO", col:"var(--rojo)", bg:"var(--rojoBg)"};
+  if(dias<=30) return {txt:"POR VENCER", col:"var(--ambar)", bg:"var(--ambarBg)"};
+  return {txt:"VIGENTE", col:"var(--verde)", bg:"var(--verdeBg)"};
+}
+
+function iniciales(nombre){
+  const partes = String(nombre).trim().split(/\s+/);
+  return ((partes[0]?.[0]||"") + (partes[1]?.[0]||"")).toUpperCase();
+}
+
+function renderGrid(lista){
+  const grid = document.getElementById("grid");
+  if(!lista.length){ grid.innerHTML = '<div class="empty">Sin resultados.</div>'; return; }
+  grid.innerHTML = lista.map(p=>`
+    <div class="persona-card" onclick='abrirModalPersona(${JSON.stringify(p.nombre)})'>
+      <div class="avatar">${iniciales(p.nombre)}</div>
+      <div class="p-nombre">${p.nombre}</div>
+      ${p.cargo ? `<div class="p-cargo">${p.cargo}</div>` : ""}
+      <div class="p-docs">${p.docs} documento${p.docs===1?'':'s'}</div>
+    </div>
+  `).join("");
+}
+
+function filtrar(){
+  const q = normName(document.getElementById("buscador").value);
+  const filtradas = q ? personasUnicas.filter(p=>normName(p.nombre).includes(q)) : personasUnicas;
+  renderGrid(filtradas);
+}
+
+function abrirModalPersona(persona){
+  const certs = certsData.filter(c=>personaCoincide(persona, c.persona));
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.onclick = (e)=>{ if(e.target===overlay) overlay.remove(); };
+
+  const cargo = certs.length ? certs[0].cargo : "";
+  let cuerpo;
+  if(!certs.length){
+    cuerpo = '<div class="empty">Sin documentos registrados para esta persona.</div>';
+  } else {
+    cuerpo = certs.map(c=>{
+      const e = estadoCert(c.vencimiento);
+      const fEmi = formatFecha(parseFechaFlexible(c.emision));
+      const fVen = formatFecha(parseFechaFlexible(c.vencimiento));
+      const fechaTxt = [fVen?('Vence: '+fVen):'', fEmi?('Emitido: '+fEmi):''].filter(Boolean).join(' · ');
+      return `
+      <div class="cert-row">
+        <div class="cert-top">
+          <span class="cert-nombre">${c.cert}</span>
+          <span class="cert-pill" style="color:${e.col};background:${e.bg}">${e.txt}</span>
+        </div>
+        ${fechaTxt ? `<div class="cert-fecha">${fechaTxt}</div>` : ""}
+        ${c.link ? `<a class="cert-link" href="${c.link}" target="_blank" rel="noopener">Ver / descargar documento →</a>` : ""}
+      </div>`;
+    }).join("");
+  }
+
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <div class="modal-top">
+        <div>
+          <div class="modal-nombre">${persona}</div>
+          ${cargo ? `<div class="modal-cargo">${cargo}</div>` : ""}
+        </div>
+        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>
+      </div>
+      ${cuerpo}
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+window.abrirModalPersona = abrirModalPersona;
+
+async function iniciar(){
+  certsData = await cargarCerts();
+  if(!certsData.length){
+    document.getElementById("grid").innerHTML = '<div class="empty">No se pudo cargar la base de personal. Revisa la URL configurada.</div>';
+    document.getElementById("footer").textContent = "Error de conexión";
+    return;
+  }
+  const mapa = {};
+  certsData.forEach(c=>{
+    const key = normName(c.persona);
+    if(!mapa[key]) mapa[key] = { nombre:c.persona, cargo:c.cargo, docs:0 };
+    mapa[key].docs++;
+  });
+  personasUnicas = Object.values(mapa).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  renderGrid(personasUnicas);
+  document.getElementById("footer").textContent = `${personasUnicas.length} personas · ${certsData.length} documentos en total`;
+}
+
+iniciar();
+</script>
+</body>
+</html>
