@@ -203,9 +203,11 @@ async function leerOTs(){
     const hrs = parseNum(c[idx.hrs]);
     const av = parseAvance(c[idx.avance]);
     const bloqueado = idx.bloqueado>=0 ? (c[idx.bloqueado]||"") : "";
-    if(!grupos[otVal]){
+    const eqVal = (c[idx.equipo]||"").trim();
+    const kg = otVal + "|" + eqVal.toLowerCase();   // una tarjeta por OT + equipo
+    if(!grupos[kg]){
       const g = GANTT_FECHAS[otVal];
-      grupos[otVal] = {
+      grupos[kg] = {
         ot:otVal, equipo:c[idx.equipo]||"", actividad:c[idx.actividad]||"",
         componente: idx.componente>=0 ? (c[idx.componente]||"") : "",
         fechaInicio: g ? parseFechaHoraCL(g[0]) : null,
@@ -214,12 +216,12 @@ async function leerOTs(){
         respons: idx.respons>=0 ? (c[idx.respons]||"").trim() : ""
       };
     }
-    const grupo = grupos[otVal];
+    const grupo = grupos[kg];
     grupo.hrsTotal += hrs;
     grupo.hrsGanadas += hrs*av/100;
     grupo.sumAv += av; grupo.nAct++;
-    { const an=(c[idx.actividad]||"").trim(), en=(c[idx.equipo]||"").trim(), t=(en?en+": ":"")+an;
-      if(an && !grupo.acts.includes(t)) grupo.acts.push(t); }
+    { const an=(c[idx.actividad]||"").trim();
+      if(an && !grupo.acts.includes(an)) grupo.acts.push(an); }
     if(bloqueado && !grupo.bloqueado) grupo.bloqueado = bloqueado;
   }
   const ots = Object.values(grupos);
@@ -278,7 +280,7 @@ async function mostrarMenu(){
     function tarjeta(o){
       const {clase, etiqueta} = estadoOT(o);
       return `
-        <a class="ot-pick ${clase}" data-ot="${o.ot}" data-q="${norm([o.ot,o.equipo,o.acts.join(' '),o.componente,o.respons].join(' ')).replace(/"/g,'')}">
+        <a class="ot-pick ${clase}" data-ot="${o.ot}" data-eq="${(o.equipo||"").replace(/"/g,"&quot;")}" data-q="${norm([o.ot,o.equipo,o.acts.join(' '),o.componente,o.respons].join(' ')).replace(/"/g,'')}">
           <div class="n">OT ${o.ot} — ${o.equipo} <span class="ot-tag">${etiqueta}</span>${o.respons?`<span class="ot-tag" style="background:transparent;border:1px ${/apoyo|otra|anglo|tercero/i.test(o.respons)?'dashed':'solid'} #8A97AD;color:#C9D3E3">${/apoyo/i.test(o.respons)?'APOYO AA':(/otra/i.test(o.respons)?'OTRAS':(/anglo|tercero/i.test(o.respons)?'ANGLO + TERCEROS':'BEL-RAY'))}</span>`:''}</div>
           <div class="s">${o.acts.length>1 ? `<b>${o.acts.length} actividades:</b> ${o.acts.join(' · ')}` : o.actividad}${o.componente ? ' · '+o.componente : ''} · ${o.avance}%</div>
         </a>`;
@@ -331,7 +333,7 @@ async function mostrarMenu(){
         total++; if(ok){ visibles++; hayEnGrupo = true; }
       });
       cierra();
-      cnt.textContent = toks.length ? `${visibles} de ${total} OT` : "";
+      cnt.textContent = toks.length ? `${visibles} de ${total}` : "";
       let sr = document.getElementById("sinres");
       if(toks.length && !visibles){
         if(!sr){ sr = document.createElement("div"); sr.id = "sinres"; sr.className = "sin-res"; lista.appendChild(sr); }
@@ -343,10 +345,11 @@ async function mostrarMenu(){
     lista.querySelectorAll(".ot-pick").forEach(el=>{
       el.addEventListener("click", async ()=>{
         const otSel = el.getAttribute("data-ot");
+        const eqSel = el.getAttribute("data-eq") || "";
         app.innerHTML = '<div class="spin"></div><div class="tag">Registrando…</div>';
-        const qs = `?nombre=${encodeURIComponent(nombre)}&apellido=${encodeURIComponent(apellido)}&tipo=entrada&ot=${encodeURIComponent(otSel)}`;
+        const qs = `?nombre=${encodeURIComponent(nombre)}&apellido=${encodeURIComponent(apellido)}&tipo=entrada&ot=${encodeURIComponent(otSel)}&equipo=${encodeURIComponent(eqSel)}`;
         const ok = await llamarExec(qs);
-        if (ok) mostrarConfirmacion("entrada", "OT " + otSel, "");
+        if (ok) mostrarConfirmacion("entrada", "OT " + otSel + (eqSel ? " · " + eqSel : ""), "");
         else mostrarError("No se pudo conectar con el servidor. Revisa tu conexión a internet e intenta de nuevo.");
       });
     });

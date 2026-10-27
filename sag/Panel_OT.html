@@ -135,6 +135,10 @@
 
   .selector{max-width:100%; margin:20px auto}
 
+  .buscador-ot{margin-bottom:12px}
+  .buscador-ot input{width:100%; box-sizing:border-box; background:var(--panel); border:1px solid var(--line); border-radius:10px; color:var(--text); font-size:15px; padding:11px 14px; outline:none}
+  .buscador-ot input:focus{border-color:var(--muted)}
+  .buscador-cnt{font-size:12px; color:var(--muted); margin-top:6px}
   .vista-toggle{display:flex; gap:8px; margin-bottom:16px}
   .vt-btn{
     background:var(--panel); border:1px solid var(--line); color:var(--muted);
@@ -404,6 +408,7 @@ async function cargarNFC(){
   const idx = {
     persona: headers.findIndex(h=>h.includes("persona")),
     ot: headers.findIndex(h=>h==="ot"),
+    equipo: headers.findIndex(h=>h==="equipo"),
     fecha: headers.findIndex(h=>h.includes("fecha")),
     hEnt: headers.findIndex(h=>h.includes("entrada")),
     hSal: headers.findIndex(h=>h.includes("salida")),
@@ -415,7 +420,7 @@ async function cargarNFC(){
     const c = parseLinea(lineas[i]);
     if(!c[idx.persona]) continue;
     res2.push({
-      persona:c[idx.persona]||"", ot:(c[idx.ot]||"").trim(), fecha:c[idx.fecha]||"",
+      persona:c[idx.persona]||"", ot:(c[idx.ot]||"").trim(), equipo:idx.equipo>=0?(c[idx.equipo]||"").trim():"", fecha:c[idx.fecha]||"",
       hEnt:c[idx.hEnt]||"", hSal:c[idx.hSal]||"", dur:c[idx.dur]||"",
       estado:(c[idx.estado]||"").toLowerCase()
     });
@@ -743,8 +748,26 @@ function esApoyo(o){ // OT sin ninguna actividad Bel-Ray → borde punteado
 let filtroResp = "todas";
 function cambiarFiltro(f){ filtroResp=f; renderVista(); }
 window.cambiarFiltro = cambiarFiltro;
+let textoBusqueda = "";
+function normTxt(t){ return String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase(); }
 function otsFiltradas(){
-  return otsGlobal.filter(o=> filtroResp==="todas" || (o.grupos||[]).includes(filtroResp));
+  const toks = normTxt(textoBusqueda).split(/\s+/).filter(Boolean);
+  return otsGlobal.filter(o=>{
+    if(!(filtroResp==="todas" || (o.grupos||[]).includes(filtroResp))) return false;
+    if(!toks.length) return true;
+    const q = normTxt([o.ot, o.equipo, o.actividad, o.componente, o.txt].join(" "));
+    return toks.every(t=>q.includes(t));
+  });
+}
+function buscarOT(v){
+  textoBusqueda = v; renderVista();
+  const i = document.getElementById("buscarOT");
+  if(i){ i.focus(); const n=i.value.length; try{ i.setSelectionRange(n,n); }catch(e){} }
+}
+window.buscarOT = buscarOT;
+function buscadorHtml(){
+  const n = textoBusqueda.trim() ? otsFiltradas().length : null;
+  return `<div class="buscador-ot"><input id="buscarOT" type="search" value="${textoBusqueda.replace(/"/g,'&quot;')}" placeholder="Buscar por equipo u OT (ej: Correa CT-4 o 4016182682)" autocomplete="off" spellcheck="false" oninput="buscarOT(this.value)">${n!==null?`<div class="buscador-cnt">${n} de ${otsGlobal.length} OT</div>`:""}</div>`;
 }
 function filtroHtml(){
   const hayOtros = otsGlobal.some(o=>(o.grupos||[]).some(g=>g!=="belray"));
@@ -791,7 +814,7 @@ function renderVistaLista(cont){
   const conFecha = lst.filter(o=>o.fechaInicio && o.fechaTermino).sort((a,b)=>a.fechaInicio-b.fechaInicio);
   const sinFecha = lst.filter(o=>!o.fechaInicio || !o.fechaTermino);
 
-  let html = toggleHtml() + filtroHtml() + '<div class="selector">';
+  let html = toggleHtml() + buscadorHtml() + filtroHtml() + '<div class="selector">';
 
   if(conFecha.length){
     const porDia = {}, ordenDias = [];
@@ -824,6 +847,7 @@ function renderVistaLista(cont){
     html += sinFecha.map(o=>`<div style="margin-bottom:8px">${tarjetaOT(o)}</div>`).join("");
   }
 
+  if(!lst.length) html += '<div class="empty">No hay resultados. Prueba con otro equipo u OT.</div>';
   html += '</div>';
   cont.innerHTML = html;
 }
@@ -834,7 +858,7 @@ function renderVistaGantt(cont){
   const conFecha = lst.filter(o=>o.fechaInicio && o.fechaTermino);
   const sinFecha = lst.filter(o=>!o.fechaInicio || !o.fechaTermino);
 
-  let html = toggleHtml() + filtroHtml() + '<div class="selector">';
+  let html = toggleHtml() + buscadorHtml() + filtroHtml() + '<div class="selector">';
 
   if(conFecha.length){
     const PX_HORA = 10, ALTO_FILA = 82, ANCHO_MIN = 230;
@@ -891,6 +915,7 @@ function renderVistaGantt(cont){
     html += sinFecha.map(o=>`<div style="margin-bottom:8px">${tarjetaOT(o)}</div>`).join("");
   }
 
+  if(!lst.length) html += '<div class="empty">No hay resultados. Prueba con otro equipo u OT.</div>';
   html += '</div>';
   cont.innerHTML = html;
 }
@@ -1044,6 +1069,7 @@ function render(actividades, personas, lubs){
                   <div class="p-head">
                     <span class="p-dot ${p.estado==='en terreno'?'on':'off'}"></span>
                     <span class="p-nombre" onclick='abrirModalPersona(${JSON.stringify(p.persona)})'>${p.persona}</span>
+                    ${p.equipo ? `<span class="p-dur" style="margin-left:auto;margin-right:8px">${p.equipo}</span>` : ""}
                     ${p.dur ? `<span class="p-dur">${p.dur}</span>` : ""}
                   </div>
                   <span class="p-horas">
@@ -1076,17 +1102,19 @@ async function cargarTodo(){
           vistas[a.ot] = { ot:a.ot, equipo:a.equipo, actividad:a.actividad, componente:a.componente,
                             fechaInicio: g ? parseFechaHoraCL(g[0]) : null,
                             fechaTermino: g ? parseFechaHoraCL(g[1]) : null,
-                            hrsTotal:0, hrsGanadas:0, bloqueado:"", respons:a.respons, grupos:[], alerta:false };
+                            hrsTotal:0, hrsGanadas:0, sumAv:0, nAct:0, txt:"", bloqueado:"", respons:a.respons, grupos:[], alerta:false };
           otsUnicas.push(vistas[a.ot]);
         }
         const g = vistas[a.ot];
         g.hrsTotal += a.hrs;
         g.hrsGanadas += a.hrs * a.avance / 100;
+        g.sumAv += a.avance; g.nAct++;
+        g.txt += " " + [a.equipo, a.actividad, a.componente].join(" ");
         if(a.bloqueado && !g.bloqueado) g.bloqueado = a.bloqueado;
         if(a.alerta) g.alerta = true;
         { const gg = grupoDe(a.respons); if(!g.grupos.includes(gg)) g.grupos.push(gg); }
       });
-      otsUnicas.forEach(o=>{ o.avance = o.hrsTotal>0 ? Math.round(o.hrsGanadas/o.hrsTotal*100) : 0; });
+      otsUnicas.forEach(o=>{ o.avance = o.hrsTotal>0 ? Math.round(o.hrsGanadas/o.hrsTotal*100) : (o.nAct ? Math.round(o.sumAv/o.nAct) : 0); });
       renderSelector(otsUnicas);
       huboRenderExitoso = true;
       actualizarFooter("selector de OT");
