@@ -57,6 +57,11 @@
   .ot-pick.en-proceso .ot-tag{background:#2A2109; color:#E3A008}
   .ot-pick.sin-iniciar .ot-tag{background:#2A1216; color:#F0616D}
   .ot-pick.pausada .ot-tag{background:#5BC8E830; color:#5BC8E8}
+  .buscador{position:sticky; top:0; z-index:5; background:#0B1220; padding:4px 0 10px}
+  .buscador input{width:100%; box-sizing:border-box; background:#131C2E; border:1px solid #243049; border-radius:10px; color:#E8EDF6; font-size:16px; padding:12px 14px; outline:none}
+  .buscador input:focus{border-color:#5BC8E8}
+  .buscador .cnt{font-size:11.5px; color:#8A97AD; margin-top:6px}
+  .sin-res{padding:24px 8px; text-align:center; color:#8A97AD; font-size:14px}
 </style>
 </head>
 <body>
@@ -205,19 +210,24 @@ async function leerOTs(){
         componente: idx.componente>=0 ? (c[idx.componente]||"") : "",
         fechaInicio: g ? parseFechaHoraCL(g[0]) : null,
         fechaTermino: g ? parseFechaHoraCL(g[1]) : null,
-        hrsTotal:0, hrsGanadas:0, bloqueado:"",
+        hrsTotal:0, hrsGanadas:0, sumAv:0, nAct:0, acts:[], bloqueado:"",
         respons: idx.respons>=0 ? (c[idx.respons]||"").trim() : ""
       };
     }
     const grupo = grupos[otVal];
     grupo.hrsTotal += hrs;
     grupo.hrsGanadas += hrs*av/100;
+    grupo.sumAv += av; grupo.nAct++;
+    { const an=(c[idx.actividad]||"").trim(), en=(c[idx.equipo]||"").trim(), t=(en?en+": ":"")+an;
+      if(an && !grupo.acts.includes(t)) grupo.acts.push(t); }
     if(bloqueado && !grupo.bloqueado) grupo.bloqueado = bloqueado;
   }
   const ots = Object.values(grupos);
-  ots.forEach(o=>{ o.avance = o.hrsTotal>0 ? Math.round(o.hrsGanadas/o.hrsTotal*100) : 0; });
+  ots.forEach(o=>{ o.avance = o.hrsTotal>0 ? Math.round(o.hrsGanadas/o.hrsTotal*100) : (o.nAct ? Math.round(o.sumAv/o.nAct) : 0); });
   return ots;
 }
+
+function norm(t){ return String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase(); }
 
 function estadoOT(o){
   if(o.bloqueado) return {clase:"pausada", etiqueta:"PAUSADA"};
@@ -254,6 +264,7 @@ async function mostrarMenu(){
   app.innerHTML = `
     <div class="tag">Entrada · elige tu OT</div>
     <div class="persona" style="margin-bottom:16px">${persona}</div>
+    <div class="buscador"><input id="buscar" type="search" placeholder="Buscar por equipo u OT (ej: MBO03 o 4016182590)" autocomplete="off" autocapitalize="off" spellcheck="false"><div class="cnt" id="cnt"></div></div>
     <div id="lista" class="lista-ots"><div class="spin"></div></div>
   `;
   try {
@@ -267,9 +278,9 @@ async function mostrarMenu(){
     function tarjeta(o){
       const {clase, etiqueta} = estadoOT(o);
       return `
-        <a class="ot-pick ${clase}" data-ot="${o.ot}">
+        <a class="ot-pick ${clase}" data-ot="${o.ot}" data-q="${norm([o.ot,o.equipo,o.acts.join(' '),o.componente,o.respons].join(' ')).replace(/"/g,'')}">
           <div class="n">OT ${o.ot} — ${o.equipo} <span class="ot-tag">${etiqueta}</span>${o.respons?`<span class="ot-tag" style="background:transparent;border:1px ${/apoyo|otra|anglo|tercero/i.test(o.respons)?'dashed':'solid'} #8A97AD;color:#C9D3E3">${/apoyo/i.test(o.respons)?'APOYO AA':(/otra/i.test(o.respons)?'OTRAS':(/anglo|tercero/i.test(o.respons)?'ANGLO + TERCEROS':'BEL-RAY'))}</span>`:''}</div>
-          <div class="s">${o.actividad}${o.componente ? ' · '+o.componente : ''} · ${o.avance}%</div>
+          <div class="s">${o.acts.length>1 ? `<b>${o.acts.length} actividades:</b> ${o.acts.join(' · ')}` : o.actividad}${o.componente ? ' · '+o.componente : ''} · ${o.avance}%</div>
         </a>`;
     }
 
@@ -301,9 +312,33 @@ async function mostrarMenu(){
     }
     if(sinFecha.length){
       html += `<div class="dia-header" style="color:#5E6B82">SIN FECHA EN EL GANTT</div>`;
-      html += sinFecha.map(o=>`<div style="margin-bottom:8px">${tarjeta(o)}</div>`).join("");
+      html += sinFecha.map(o=>`<div class="fila-sf" style="margin-bottom:8px">${tarjeta(o)}</div>`).join("");
     }
     lista.innerHTML = html;
+
+    // Buscador: filtra por equipo, OT, actividad o componente (sin tildes, varias palabras)
+    const inp = document.getElementById("buscar"), cnt = document.getElementById("cnt");
+    function filtrar(){
+      const toks = norm(inp.value).split(/\s+/).filter(Boolean);
+      let visibles = 0, total = 0, headerActual = null, hayEnGrupo = false;
+      const cierra = ()=>{ if(headerActual) headerActual.style.display = hayEnGrupo ? "" : "none"; };
+      Array.from(lista.children).forEach(el=>{
+        if(el.classList.contains("dia-header")){ cierra(); headerActual = el; hayEnGrupo = false; return; }
+        if(!(el.classList.contains("timeline-item") || el.classList.contains("fila-sf"))) return;
+        const q = el.querySelector(".ot-pick").getAttribute("data-q");
+        const ok = toks.every(t=>q.includes(t));
+        el.style.display = ok ? "" : "none";
+        total++; if(ok){ visibles++; hayEnGrupo = true; }
+      });
+      cierra();
+      cnt.textContent = toks.length ? `${visibles} de ${total} OT` : "";
+      let sr = document.getElementById("sinres");
+      if(toks.length && !visibles){
+        if(!sr){ sr = document.createElement("div"); sr.id = "sinres"; sr.className = "sin-res"; lista.appendChild(sr); }
+        sr.textContent = "No hay resultados. Prueba con otro equipo u OT.";
+      } else if(sr){ sr.remove(); }
+    }
+    inp.addEventListener("input", filtrar);
 
     lista.querySelectorAll(".ot-pick").forEach(el=>{
       el.addEventListener("click", async ()=>{
