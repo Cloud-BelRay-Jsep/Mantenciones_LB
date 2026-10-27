@@ -67,7 +67,20 @@
   .act-top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; gap:8px}
   .act-name{font-size:13.5px; font-weight:600}
   .act-resp{font-size:11px; color:var(--dim)}
+  .etapas{margin-top:10px; padding-top:10px; border-top:1px solid var(--line)}
+  .et-head{display:flex; justify-content:space-between; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; margin-bottom:8px}
+  .et-row{display:flex; gap:10px; align-items:flex-start; margin-bottom:9px}
+  .et-n{flex:0 0 22px; height:22px; border-radius:50%; background:var(--panel2); color:var(--muted); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; margin-top:1px}
+  .et-main{flex:1; min-width:0}
+  .et-top{display:flex; align-items:baseline; gap:8px; margin-bottom:4px}
+  .et-nombre{font-size:12.5px; font-weight:600; flex:1; min-width:0}
+  .et-pill{font-size:9px; font-weight:700; padding:2px 7px; border-radius:9px; white-space:nowrap}
+  .et-pct{font-size:12px; font-weight:700; min-width:34px; text-align:right}
+  .et-obs{font-size:11px; color:var(--dim); margin-top:3px}
+  .et-vacio{font-size:11px; color:var(--dim); margin-top:8px}
   .lub-box{margin-top:16px}
+  .lub-en-act{margin-top:10px; padding-top:10px; border-top:1px solid var(--line)}
+  .lub-en-act .lub-row{background:var(--panel2); margin-bottom:6px}
   .lub-row{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px}
   .lub-punto{font-size:12px; color:var(--muted); line-height:1.35}
   .lub-main{display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-top:4px}
@@ -248,12 +261,16 @@ const NFC_CSV_URL     = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuKIv4
 // Publica la pestaña CERTIFICACIONES igual que las otras (Archivo > Compartir > Publicar en la web > CSV) y pega su link aquí:
 const CERTS_CSV_URL   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuKIv4RpPLmGUOHTrClUnWR1MpW7RLIVczjE4MfweIp-KeuwoaPtnfQVpL2ohNXqitH4b93zFO9xPV/pub?gid=1733484865&single=true&output=csv";
 // Pestaña LUBRICANTES_OT publicada como CSV (OT, Equipo, Punto, Marca, Lubricante, Cantidad, Unidad, Observación)
+// Hoja OPERACIONES_OT (etapas por actividad). Publicar la pestaña como CSV y pegar aquí su link.
+const OPERACIONES_CSV_URL = "";
 const LUBRICANTES_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuKIv4RpPLmGUOHTrClUnWR1MpW7RLIVczjE4MfweIp-KeuwoaPtnfQVpL2ohNXqitH4b93zFO9xPV/pub?gid=1903420084&single=true&output=csv";
 const DOCS_TERRENO_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuKIv4RpPLmGUOHTrClUnWR1MpW7RLIVczjE4MfweIp-KeuwoaPtnfQVpL2ohNXqitH4b93zFO9xPV/pub?gid=2126357148&single=true&output=csv";
 const REFRESH_MS = 20000;
 
 const params = new URLSearchParams(window.location.search);
 const OT_SELECCIONADA = (params.get("ot") || "").trim();
+const EQUIPO_SELECCIONADO = (params.get("equipo") || "").trim();   // opcional: una OT puede tener varios equipos
+function hrefOT(o){ return "?ot=" + encodeURIComponent(o.ot) + (o.equipo ? "&equipo=" + encodeURIComponent(o.equipo) : ""); }
 
 function parseLinea(linea){
   const res=[]; let cur=""; let dentro=false;
@@ -375,6 +392,36 @@ async function cargarCaptura(){
 
 // Solo se aceptan enlaces http(s); cualquier otro valor se ignora
 function urlSegura(u){ u=(u||"").trim(); return /^https?:\/\//i.test(u) ? u.replace(/"/g,"%22") : ""; }
+async function cargarOperaciones(){
+  if(!OPERACIONES_CSV_URL) return [];
+  try{
+    const res = await fetch(OPERACIONES_CSV_URL + (OPERACIONES_CSV_URL.includes("?")?"&":"?") + "_=" + Date.now());
+    const lineas = (await res.text()).split("\n").filter(l=>l.trim());
+    const hIdx = encontrarHeader(lineas, "operaci");
+    const h = parseLinea(lineas[hIdx]).map(x=>x.trim().toLowerCase());
+    const f = n => h.findIndex(x=>x===n || x.startsWith(n));
+    const ix = {ot:f("ot"), equipo:f("equipo"), act:f("actividad"), orden:f("orden"), op:f("operaci"),
+                av:f("avance"), estado:f("estado"), hrs:f("hrs"), obs:f("observaci")};
+    const g = (c,i)=> i>=0 ? (c[i]||"").trim() : "";
+    const out = [];
+    for(let i=hIdx+1;i<lineas.length;i++){
+      const c = parseLinea(lineas[i]);
+      const ot = g(c,ix.ot).replace(/\.0$/,"");
+      const op = g(c,ix.op);
+      if(!ot || !op) continue;
+      const rawAv = g(c,ix.av).replace("%","").replace(",",".");
+      let av = parseFloat(rawAv); if(isNaN(av)) av = 0;
+      if(g(c,ix.av).indexOf("%")<0 && av>0 && av<=1) av = av*100;
+      av = Math.max(0, Math.min(100, Math.round(av)));
+      const ord = parseFloat(g(c,ix.orden).replace(",","."));
+      const hrs = parseFloat(g(c,ix.hrs).replace(",","."));
+      out.push({ot, equipo:g(c,ix.equipo), actividad:g(c,ix.act), orden:isNaN(ord)?9999:ord, fila:i, op,
+                avance:av, estado:g(c,ix.estado), hrs:isNaN(hrs)?0:hrs, obs:g(c,ix.obs)});
+    }
+    return out;
+  }catch(e){ return []; }
+}
+
 async function cargarLubricantes(){
   if(!LUBRICANTES_CSV_URL) return [];
   try{
@@ -384,7 +431,7 @@ async function cargarLubricantes(){
     const h = parseLinea(lineas[hIdx]).map(x=>x.trim().toLowerCase());
     const f = n => h.findIndex(x=>x===n || x.startsWith(n));
     const ix = {ot:f("ot"), equipo:f("equipo"), punto:f("punto"), marca:f("marca"), lub:f("lubricante"),
-                cant:f("cantidad"), unidad:f("unidad"), obs:f("observaci"), hds:f("hds"), ficha:f("ficha")};
+                cant:f("cantidad"), unidad:f("unidad"), obs:f("observaci"), hds:f("hds"), ficha:f("ficha"), comp:f("componente")};
     const g = (c,i)=> i>=0 ? (c[i]||"").trim() : "";
     const out = [];
     for(let i=hIdx+1;i<lineas.length;i++){
@@ -392,7 +439,7 @@ async function cargarLubricantes(){
       const ot = g(c,ix.ot).replace(/\.0$/,"");
       if(!ot) continue;
       out.push({ot, equipo:g(c,ix.equipo), punto:g(c,ix.punto), marca:g(c,ix.marca), lub:g(c,ix.lub),
-                cant:g(c,ix.cant), unidad:g(c,ix.unidad), obs:g(c,ix.obs), hds:urlSegura(g(c,ix.hds)), ficha:urlSegura(g(c,ix.ficha))});
+                cant:g(c,ix.cant), unidad:g(c,ix.unidad), obs:g(c,ix.obs), hds:urlSegura(g(c,ix.hds)), ficha:urlSegura(g(c,ix.ficha)), comp:g(c,ix.comp)});
     }
     return out;
   }catch(e){ return []; }
@@ -718,7 +765,7 @@ function estadoOT(o){
 function tarjetaOT(o){
   const {clase, etiqueta} = estadoOT(o);
   return `
-    <a class="ot-pick ${clase}${esApoyo(o)?' apoyo':''}" href="?ot=${encodeURIComponent(o.ot)}">
+    <a class="ot-pick ${clase}${esApoyo(o)?' apoyo':''}" href="${hrefOT(o)}">
       <div class="n">OT ${o.ot} — ${o.equipo} <span class="ot-tag">${etiqueta}</span>${badgesOT(o)}${o.alerta?'<span class="alerta-badge">⚠ Obs. planificación</span>':''}</div>
       <div class="s">${o.actividad}${o.componente ? ' · '+o.componente : ''} · ${o.avance}%</div>
     </a>`;
@@ -886,7 +933,7 @@ function renderVistaGantt(cont){
       const hIni = `${String(o.fechaInicio.getHours()).padStart(2,"0")}:${String(o.fechaInicio.getMinutes()).padStart(2,"0")}`;
       const hFin = `${String(o.fechaTermino.getHours()).padStart(2,"0")}:${String(o.fechaTermino.getMinutes()).padStart(2,"0")}`;
       barsHtml += `
-        <a class="gantt-bar ${clase}${esApoyo(o)?' apoyo':''}" href="?ot=${encodeURIComponent(o.ot)}"
+        <a class="gantt-bar ${clase}${esApoyo(o)?' apoyo':''}" href="${hrefOT(o)}"
            title="OT ${o.ot} — ${o.equipo} · ${o.actividad}${o.componente?' · '+o.componente:''} · ${hIni}–${hFin} · ${etiqueta} · ${o.avance}% · ${(o.grupos||[]).map(g=>ETQ_GRUPO[g]).join(' / ')}"
            style="left:${left}px; width:${width}px; top:${i*(ALTO_FILA+6)}px">
           <span class="gb-nombre">OT ${o.ot} — ${o.equipo} · ${(o.grupos||[]).map(g=>ETQ_GRUPO[g]).join(' / ')}${o.alerta?' · ⚠':''}</span>
@@ -920,13 +967,81 @@ function renderVistaGantt(cont){
   cont.innerHTML = html;
 }
 
-function render(actividades, personas, lubs){
-  lubs = (lubs||[]).filter(l=>l.ot===OT_SELECCIONADA);
+// ===== Lubricantes: por equipo y componente =====
+function claveComp(t){ return normTxt(t).replace(/[^a-z0-9]/g,""); }
+function lubCoincide(l, a){
+  // Se compara el componente de la actividad con la columna Componente del lubricante;
+  // si esa columna no existe o está vacía, con el Punto de lubricación.
+  const kl = claveComp(l.comp || l.punto), ka = claveComp(a.componente);
+  return !!kl && !!ka && (kl===ka || ka.includes(kl) || kl.includes(ka));
+}
+function lubRowHtml(l, conComp){
+  return `
+    <div class="lub-row">
+      <div class="lub-punto">${l.punto||"—"}${conComp && l.comp?` · ${l.comp}`:""}${l.equipo?` · ${l.equipo}`:""}</div>
+      <div class="lub-main">
+        ${l.lub ? `<div class="lub-nombre">${l.marca?`<span class="lub-marca">${l.marca}</span>`:""}${l.lub}</div>`
+                : `<div class="lub-pend">Lubricante por definir en terreno</div>`}
+        ${l.cant ? `<div class="lub-cant">${l.cant} <small>${l.unidad||""}</small></div>` : (l.lub ? `<div class="lub-pend">Volumen por definir</div>` : "")}
+      </div>
+      ${l.obs ? `<div class="lub-obs">${l.obs}</div>` : ""}
+      ${(l.hds||l.ficha) ? `<div class="lub-docs">${l.hds?`<a href="${l.hds}" target="_blank" rel="noopener">HDS</a>`:""}${l.ficha?`<a href="${l.ficha}" target="_blank" rel="noopener">Ficha técnica</a>`:""}</div>` : ""}
+    </div>`;
+}
+function lubsDeActividad(a, lubs){
+  return lubs.filter(l=> claveEq(l.equipo)===claveEq(a.equipo) && lubCoincide(l,a));
+}
+const claveEq = t => normTxt(t).replace(/[^a-z0-9.]/g,"");
+
+// ===== Etapas (operaciones) de cada actividad: solo se ven en este panel, no afectan al registro =====
+function etapasDe(a, ops){
+  const nE = normTxt(a.equipo), nA = normTxt(a.actividad);
+  return ops.filter(o=> (!o.equipo || normTxt(o.equipo)===nE) && (!o.actividad || normTxt(o.actividad)===nA))
+            .sort((x,y)=> x.orden-y.orden || x.fila-y.fila);
+}
+function estadoEtapa(e){
+  if(/paus|bloq/i.test(e.estado)) return {t:"PAUSADA", c:"var(--ambar)", bg:"var(--ambarBg)"};
+  if(e.avance>=100 || /complet/i.test(e.estado)) return {t:"COMPLETADA", c:"var(--verde)", bg:"var(--verdeBg)"};
+  if(e.avance>0 || /proceso/i.test(e.estado)) return {t:"EN PROCESO", c:"var(--ambar)", bg:"var(--ambarBg)"};
+  return {t:"PENDIENTE", c:"var(--muted)", bg:"var(--panel2)"};
+}
+function etapasHtml(a, ops){
+  if(!OPERACIONES_CSV_URL) return "";
+  const et = etapasDe(a, ops);
+  if(!et.length) return '<div class="et-vacio">Sin etapas definidas para esta actividad.</div>';
+  const hechas = et.filter(e=>estadoEtapa(e).t==="COMPLETADA").length;
+  const pct = Math.round(et.reduce((s,e)=>s+e.avance,0)/et.length);
+  return `<div class="etapas">
+    <div class="et-head"><span>Etapas · ${hechas} de ${et.length} completadas</span><span>${pct}%</span></div>
+    ${et.map((e,i)=>{ const st = estadoEtapa(e); return `
+      <div class="et-row">
+        <span class="et-n" style="${st.t==='COMPLETADA'?'background:var(--verde);color:#0B1220':''}">${i+1}</span>
+        <div class="et-main">
+          <div class="et-top"><span class="et-nombre">${e.op}</span>
+            <span class="et-pill" style="background:${st.bg};color:${st.c}">${st.t}</span>
+            <span class="et-pct">${e.avance}%</span></div>
+          <div class="bar"><div class="bar-fill" style="width:${e.avance}%;background:${st.c==='var(--muted)'?'var(--dim)':st.c}"></div></div>
+          ${e.obs ? `<div class="et-obs">${e.obs}</div>` : ""}
+        </div>
+      </div>`; }).join("")}
+  </div>`;
+}
+
+function render(actividades, personas, lubs, ops){
+  // El lubricante es por equipo: si se entró a un equipo, solo se muestran sus puntos de lubricación
+  lubs = (lubs||[]).filter(l=>l.ot===OT_SELECCIONADA && (!EQUIPO_SELECCIONADO || !l.equipo || claveEq(l.equipo)===claveEq(EQUIPO_SELECCIONADO)));
+  ops = (ops||[]).filter(o=>o.ot===OT_SELECCIONADA);
   actividades = actividades.slice().sort((a,b)=>a.orden-b.orden);
   const eq = actividades[0].equipo;
   document.getElementById("tituloOT").textContent = "OT " + OT_SELECCIONADA;
-  document.getElementById("subOT").innerHTML = eq + " · Anglo American Los Bronces " + [...new Set(actividades.map(a=>grupoDe(a.respons)))].map(g=>`<span class="resp-badge ${g==='belray'?'br':'aa'}">${ETQ_GRUPO[g]}</span>`).join("");
+  document.getElementById("subOT").innerHTML = [...new Set(actividades.map(a=>a.equipo).filter(Boolean))].join(" + ") + " · Anglo American Los Bronces " + [...new Set(actividades.map(a=>grupoDe(a.respons)))].map(g=>`<span class="resp-badge ${g==='belray'?'br':'aa'}">${ETQ_GRUPO[g]}</span>`).join("");
 
+  // cada lubricante se muestra dentro de la actividad que coincide en equipo y componente;
+  // los que no coinciden con ninguna actividad quedan en la sección general
+  const lubsEnTarjeta = new Set();
+  actividades.forEach(a=> lubsDeActividad(a, lubs).forEach(l=>lubsEnTarjeta.add(l)));
+  const lubsSueltas = lubs.filter(l=>!lubsEnTarjeta.has(l));
+  const variosEq = new Set(actividades.map(a=>normTxt(a.equipo))).size > 1;
   const hrsTot = actividades.reduce((s,a)=>s+a.hrs,0);
   const avanceGlobal = actividades.length>0 ? Math.round(actividades.reduce((s,a)=>s+a.avance,0)/actividades.length) : 0;
   const nv = nivel(avanceGlobal);
@@ -938,7 +1053,7 @@ function render(actividades, personas, lubs){
 
   const R=80, C=2*Math.PI*R, off = C - (avanceGlobal/100)*C;
 
-  const personasOT = personas.filter(p=>p.ot===OT_SELECCIONADA)
+  const personasOT = personas.filter(p=>p.ot===OT_SELECCIONADA && (!EQUIPO_SELECCIONADO || !p.equipo || normTxt(p.equipo)===normTxt(EQUIPO_SELECCIONADO)))
     .sort((a,b)=> (b.hEnt||"").localeCompare(a.hEnt||""));
   const enTerreno = personasOT.filter(p=>p.estado==="en terreno");
   const unicas = new Set(personasOT.map(p=>p.persona)).size;
@@ -986,21 +1101,9 @@ function render(actividades, personas, lubs){
           <div class="metric"><div class="v">${promDur}</div><div class="l">Duración promedio</div></div>
         </div>
 
-        <div class="lub-box">
-          <div class="section-title">Lubricantes y volúmenes</div>
-          ${lubs.length===0 ? '<div class="empty" style="padding:14px">Sin información de lubricante para esta OT.</div>' :
-            lubs.map(l=>`
-            <div class="lub-row">
-              <div class="lub-punto">${l.punto||"—"}${l.equipo?` · ${l.equipo}`:""}</div>
-              <div class="lub-main">
-                ${l.lub ? `<div class="lub-nombre">${l.marca?`<span class="lub-marca">${l.marca}</span>`:""}${l.lub}</div>`
-                        : `<div class="lub-pend">Lubricante por definir en terreno</div>`}
-                ${l.cant ? `<div class="lub-cant">${l.cant} <small>${l.unidad||""}</small></div>` : (l.lub ? `<div class="lub-pend">Volumen por definir</div>` : "")}
-              </div>
-              ${l.obs ? `<div class="lub-obs">${l.obs}</div>` : ""}
-              ${(l.hds||l.ficha) ? `<div class="lub-docs">${l.hds?`<a href="${l.hds}" target="_blank" rel="noopener">HDS</a>`:""}${l.ficha?`<a href="${l.ficha}" target="_blank" rel="noopener">Ficha técnica</a>`:""}</div>` : ""}
-            </div>`).join("")}
-        </div>
+        ${lubs.length===0 ? `<div class="lub-box"><div class="section-title">Lubricantes y volúmenes</div><div class="empty" style="padding:14px">Sin información de lubricante para esta OT.</div></div>` :
+          (lubsSueltas.length ? `<div class="lub-box"><div class="section-title">Lubricantes y volúmenes</div>${lubsSueltas.map(l=>lubRowHtml(l,true)).join("")}</div>` :
+            `<div class="lub-box"><div class="section-title">Lubricantes y volúmenes</div><div class="empty" style="padding:14px">Los lubricantes están dentro de cada actividad.</div></div>`)}
       </div>
 
       <div class="col">
@@ -1020,9 +1123,11 @@ function render(actividades, personas, lubs){
               </div>
               <span class="act-pct" style="color:${c}">${a.avance}%</span>
             </div>
-            ${(a.componente || a.resp) ? `<div class="act-resp">${[a.componente, a.resp].filter(Boolean).join(" · ")}</div>` : ""}
+            ${(a.componente || a.resp || variosEq) ? `<div class="act-resp">${[variosEq ? a.equipo : "", a.componente, a.resp].filter(Boolean).join(" · ")}</div>` : ""}
             <div class="bar" style="margin-top:6px"><div class="bar-fill fill-${n}" style="width:${a.avance}%"></div></div>
             ${a.bloqueado ? `<div style="margin-top:6px;font-size:11px;color:var(--ambar)">⚠ ${a.bloqueado}</div>` : ""}
+            ${(()=>{ const ll = lubsDeActividad(a, lubs); return ll.length ? `<div class="lub-en-act"><div class="et-head" style="margin-bottom:6px"><span>Lubricante · ${a.equipo}${a.componente?' · '+a.componente:''}</span></div>${ll.map(l=>lubRowHtml(l,false)).join("")}</div>` : ""; })()}
+            ${etapasHtml(a, ops)}
             ${(a.obs||a.alcance) ? `<div class="act-obs">${a.obs?`<div><b>Observación:</b> ${a.obs}</div>`:""}${a.alcance?`<div><b>Alcance Bel-Ray:</b> ${a.alcance}</div>`:""}</div>` : ""}
           </div>`;
         }).join("")}
@@ -1090,22 +1195,23 @@ let huboRenderExitoso = false;
 
 async function cargarTodo(){
   try{
-    const [captura, nfc, certs, lubs] = await Promise.all([cargarCaptura(), cargarNFC(), cargarCerts(), cargarLubricantes()]);
+    const [captura, nfc, certs, lubs, ops] = await Promise.all([cargarCaptura(), cargarNFC(), cargarCerts(), cargarLubricantes(), cargarOperaciones()]);
     certsData = certs;
 
     if(!OT_SELECCIONADA){
       const vistas={}, otsUnicas=[];
       captura.forEach(a=>{
         if(!a.ot || a.ot==="-" || /^sin\s*ot$/i.test(a.ot)) return;   // actividades sin OT no tienen panel propio
-        if(!vistas[a.ot]){
+        const kv = a.ot + "|" + normTxt(a.equipo);   // una entrada por OT + equipo
+        if(!vistas[kv]){
           const g = GANTT_FECHAS[a.ot];
-          vistas[a.ot] = { ot:a.ot, equipo:a.equipo, actividad:a.actividad, componente:a.componente,
+          vistas[kv] = { ot:a.ot, equipo:a.equipo, actividad:a.actividad, componente:a.componente,
                             fechaInicio: g ? parseFechaHoraCL(g[0]) : null,
                             fechaTermino: g ? parseFechaHoraCL(g[1]) : null,
                             hrsTotal:0, hrsGanadas:0, sumAv:0, nAct:0, txt:"", bloqueado:"", respons:a.respons, grupos:[], alerta:false };
-          otsUnicas.push(vistas[a.ot]);
+          otsUnicas.push(vistas[kv]);
         }
-        const g = vistas[a.ot];
+        const g = vistas[kv];
         g.hrsTotal += a.hrs;
         g.hrsGanadas += a.hrs * a.avance / 100;
         g.sumAv += a.avance; g.nAct++;
@@ -1121,14 +1227,14 @@ async function cargarTodo(){
       return;
     }
 
-    const actividades = captura.filter(a=>a.ot===OT_SELECCIONADA);
+    const actividades = captura.filter(a=>a.ot===OT_SELECCIONADA && (!EQUIPO_SELECCIONADO || normTxt(a.equipo)===normTxt(EQUIPO_SELECCIONADO)));
     if(!actividades.length){
       document.getElementById("tituloOT").textContent = "OT " + OT_SELECCIONADA;
       document.getElementById("contenido").innerHTML = '<div class="empty">No se encontraron actividades para esta OT en CAPTURA.</div>';
       actualizarFooter("sin datos para esta OT");
       return;
     }
-    render(actividades, nfc, lubs);
+    render(actividades, nfc, lubs, ops);
     huboRenderExitoso = true;
     actualizarFooter("en vivo");
   }catch(e){
