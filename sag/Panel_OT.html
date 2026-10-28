@@ -152,6 +152,8 @@
   .buscador-ot input{width:100%; box-sizing:border-box; background:var(--panel); border:1px solid var(--line); border-radius:10px; color:var(--text); font-size:15px; padding:11px 14px; outline:none}
   .buscador-ot input:focus{border-color:var(--muted)}
   .buscador-cnt{font-size:12px; color:var(--muted); margin-top:6px}
+  .btn-volver{color:var(--muted); text-decoration:none; font-size:13px; background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:6px 14px}
+  .btn-volver:hover{color:var(--text); border-color:var(--muted)}
   .vista-toggle{display:flex; gap:8px; margin-bottom:16px}
   .vt-btn{
     background:var(--panel); border:1px solid var(--line); color:var(--muted);
@@ -243,6 +245,7 @@
       </div>
     </div>
     <div class="status">
+      <a id="btnVolver" href="index.html" class="btn-volver">← Volver</a>
       <a href="Acreditaciones.html" style="color:var(--muted); text-decoration:none; font-size:13px; background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:6px 14px" onmouseover="this.style.color='var(--acento)'" onmouseout="this.style.color='var(--muted)'">👤 Acreditaciones</a>
       <div class="live"><span class="dot"></span> EN VIVO</div>
       <div class="clock" id="clock">--:--:--</div>
@@ -1047,6 +1050,10 @@ function render(actividades, personas, lubs, ops){
   const nv = nivel(avanceGlobal);
   const col = colorNivel(nv);
   const completas = actividades.filter(a=>a.avance>=100).length;
+  // Si la OT tiene etapas (operaciones), el resumen cuenta las etapas; si no, las actividades de CAPTURA
+  const etapasOT = OPERACIONES_CSV_URL ? [...new Set(actividades.flatMap(a=>etapasDe(a, ops)))] : [];
+  const totItems = etapasOT.length || actividades.length;
+  const hechasItems = etapasOT.length ? etapasOT.filter(e=>estadoEtapa(e).t==="COMPLETADA").length : completas;
   const bloqueadas = actividades.filter(a=>a.bloqueado).length;
   const estadoTxt = bloqueadas>0 ? "BLOQUEADO" : (avanceGlobal>=100?"COMPLETADA":(avanceGlobal===0?"SIN INICIAR":"EN PROCESO"));
   const estadoBg = nv==="ok"?"var(--verdeBg)":(nv==="crit"?"var(--rojoBg)":"var(--ambarBg)");
@@ -1087,8 +1094,8 @@ function render(actividades, personas, lubs, ops){
           <span class="pill-estado" style="background:${estadoBg};color:${col}">${estadoTxt}</span>
           <button class="btn-docs-terreno" onclick="abrirModalDocsTerreno()">📋 Documentación de Terreno</button>
           <div class="hero-stats">
-            <div class="hstat"><div class="v">${actividades.length}</div><div class="l">Actividades</div></div>
-            <div class="hstat"><div class="v">${completas}/${actividades.length}</div><div class="l">Completadas</div></div>
+            <div class="hstat"><div class="v">${totItems}</div><div class="l">Actividades</div></div>
+            <div class="hstat"><div class="v">${hechasItems}/${totItems}</div><div class="l">Completadas</div></div>
             <div class="hstat"><div class="v">${Math.round(hrsTot*10)/10}</div><div class="l">Hrs estimadas</div></div>
             <div class="hstat"><div class="v">${bloqueadas}</div><div class="l">Bloqueadas</div></div>
           </div>
@@ -1255,6 +1262,12 @@ function tick(){
   document.getElementById("clock").textContent = new Date().toLocaleTimeString("es-CL",{timeZone:"America/Santiago"});
 }
 
+// Botón volver: desde una OT regresa a la lista de OT; desde la lista, al panel general
+(function(){
+  const b = document.getElementById("btnVolver"); if(!b) return;
+  if(OT_SELECCIONADA){ b.href = "Panel_OT.html"; b.textContent = "← Volver a la lista de OT"; }
+  else { b.href = "index.html"; b.textContent = "← Volver al panel general"; }
+})();
 tick(); setInterval(tick,1000);
 cargarTodo(); setInterval(cargarTodo, REFRESH_MS);
 </script>
