@@ -383,14 +383,14 @@ function render(todos){
             pct(P.actDeb, X.acts.t), `<span>Debería llevar <b class="num">${P.actDeb}</b> · llevo <b class="num">${P.actLlevo}</b></span>${brecha(P.actLlevo,P.actDeb)}`, T.c)}
         ${medidor("Cumplimiento por OT", X.pOT, `${X.ots.c} de ${X.ots.t} OT realizadas`,
             pct(P.otDeb, X.ots.t), `<span>Debería llevar <b class="num">${P.otDeb}</b> · llevo <b class="num">${P.otLlevo}</b></span>${brecha(P.otLlevo,P.otDeb)}`, T.c)}
-        ${medidor("Cumplimiento por horas Gantt", ptsH?X.pHrs:null, ptsH?`${X.ganadas.toFixed(1)} de ${X.hrs.toFixed(1)} h ganadas`:"sin horas Gantt",
-            ptsH?pct(P.hrsDeb, X.hrs):null, ptsH?`<span>Deberían ser <b class="num">${P.hrsDeb.toFixed(1)} h</b> · ganadas <b class="num">${P.hrsLlevo.toFixed(1)} h</b></span>${brecha(P.hrsLlevo,P.hrsDeb,"h")}`:"", T.c)}
+        ${medidor("Cumplimiento por horas Gantt", ptsH?X.pHrs:null, ptsH?`${X.ganadas.toFixed(1)} de ${X.hrs.toFixed(1)} h avanzadas`:"sin horas Gantt",
+            ptsH?pct(P.hrsDeb, X.hrs):null, ptsH?`<span>Debería llevar <b class="num">${P.hrsDeb.toFixed(1)} h</b> · llevo <b class="num">${P.hrsLlevo.toFixed(1)} h</b></span>${brecha(P.hrsLlevo,P.hrsDeb,"h")}`:"", T.c)}
       </div>
       <div class="m-leg" style="margin-top:8px"><i></i>La marca blanca indica cuánto debería llevar a esta hora según la carta Gantt.</div>
       <div class="estados">${apilada("Actividades", X.acts)}${apilada("OT", X.ots)}</div>
       <div class="hechos">
         <span>Hrs Gantt de estas actividades<b>${X.hrs.toFixed(1)}</b></span>
-        <span>Hrs ganadas<b>${X.ganadas.toFixed(1)}</b></span>
+        <span>Hrs avanzadas<b>${X.ganadas.toFixed(1)}</b></span>
         <span>Hrs reales medidas<b>${X.real.toFixed(1)}</b></span>
         <span>Personas en terreno<b>${X.personas}</b></span>
       </div>
