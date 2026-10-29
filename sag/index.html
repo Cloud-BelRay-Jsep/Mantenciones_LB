@@ -49,6 +49,7 @@
 
   /* medidores: cumplimiento + plan a la fecha */
   .meters{display:grid; grid-template-columns:repeat(3,1fr)}
+  .meters.m2{grid-template-columns:repeat(2,1fr)}
   .meter{padding:2px 18px 4px}
   .meter:first-child{padding-left:0}
   .meter:last-child{padding-right:0}
@@ -108,6 +109,8 @@
   .tag{font-size:9px; font-weight:700; letter-spacing:.5px; padding:1px 6px; border-radius:4px; white-space:nowrap; line-height:1.4}
   .tag.obs{border:1px solid #E3B341; color:#E3B341}
   .tag.venc{border:1px solid var(--rojo); color:var(--rojo)}
+  .act-nom{font-size:11.5px; color:var(--text); margin-top:5px; line-height:1.3; font-weight:500}
+  .act-comp{font-size:10.5px; color:var(--acento); margin-top:2px; line-height:1.3}
   .actividad{font-size:10.5px; color:var(--muted); margin:3px 0 6px; line-height:1.3}
   .prog-top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:3px}
   .prog-pct{font-size:16px; font-weight:700; font-variant-numeric:tabular-nums}
@@ -243,7 +246,7 @@ function fusionarElectroimanes(rows){
   copia.filter(esEl).forEach(e=>{
     const c = res.find(r=>r.ot===e.ot && /^correa/i.test(r.equipo) && codCT(r.equipo)===codCT(e.equipo));
     if(!c){ res.push(e); return; }
-    if(!c._n){ c._n = 1; c._sum = c.avance; c.equipo += " + Electroimán"; }
+    if(!c._n){ c._n = 1; c._sum = c.avance; c.equipo += " + Electroimán"; if(c.comp) c.comp += " / E. Imán"; }
     c._n++; c._sum += e.avance;
     c.avance = Math.floor(c._sum/c._n);                 // llega a 100% solo cuando ambos están al 100%
     c.hrs += e.hrs; c.horasReal = (c.horasReal||0) + (e.horasReal||0);
@@ -261,6 +264,8 @@ function agruparPorOT(datos){
   datos.forEach(d=>{
     const g = mapa[d.ot] || (mapa[d.ot] = {ot:d.ot, equipos:[], filas:[], hrs:0, ganadas:0, real:0, sumAv:0, bloqueado:"", enTerreno:[], alerta:false});
     if(d.equipo && !g.equipos.includes(d.equipo)) g.equipos.push(d.equipo);
+    (g.acts = g.acts||[]); if(d.actividad && !g.acts.includes(d.actividad)) g.acts.push(d.actividad);
+    (g.comps = g.comps||[]); if(d.comp && !g.comps.includes(d.comp)) g.comps.push(d.comp);
     g.filas.push(d);
     g.hrs += d.hrs; g.ganadas += d.hrs*d.avance/100; g.real += d.horasReal||0; g.sumAv += d.avance;
     if(d.bloqueado && !g.bloqueado) g.bloqueado = d.bloqueado;
@@ -268,7 +273,7 @@ function agruparPorOT(datos){
     if(d.enTerreno && d.enTerreno.length) g.enTerreno = g.enTerreno.concat(d.enTerreno);
   });
   return Object.values(mapa).map(g=>({
-    ot:g.ot, equipo:g.equipos.join(" · "),
+    ot:g.ot, equipo:g.equipos.join(" · "), actNombres:g.acts||[], comps:g.comps||[],
     avance: g.hrs>0 ? Math.round(g.ganadas/g.hrs*100) : (g.filas.length ? Math.round(g.sumAv/g.filas.length) : 0),   // con horas: ponderado; sin horas: promedio simple
     hrs:Math.round(g.hrs*10)/10, real:Math.round(g.real*10)/10,
     acts:g.filas.length, hechas:g.filas.filter(r=>r.avance>=100).length,
@@ -342,10 +347,10 @@ function apilada(titulo, X){
 
 const TABS = [
   {k:"gantt",  t:"Bel-Ray · Gantt",            c:"#3B82F6", full:true,  nota:"Actividades del programa Bel-Ray que están en la carta Gantt. Cada electroimán cuenta como una sola actividad junto a su correa."},
-  {k:"prog",   t:"Bel-Ray · Solo programadas", c:"#4FD1C5", full:false, nota:"Actividades programadas de Bel-Ray que no están en la Gantt (sin horas estimadas): solo cantidades."},
+  {k:"prog",   t:"Bel-Ray · Solo programadas", c:"#4FD1C5", full:false, nota:"Actividades programadas de Bel-Ray que no están en la Gantt (sin horas estimadas): avance por cantidad de actividades y OT."},
   {k:"apoyo",  t:"Apoyo AA",                   c:"#A78BFA", full:true,  nota:"Bel-Ray apoya a Anglo American en estas actividades de la Gantt."},
-  {k:"anglo",  t:"Anglo + Terceros",           c:"#E3A008", full:false, nota:"Programa Anglo + Terceros: solo cantidades, no hay cumplimiento."},
-  {k:"otras",  t:"Adicionales",                c:"#8A97AD", full:false, nota:"Actividades adicionales fuera de la Gantt: solo cantidades, no hay cumplimiento."},
+  {k:"anglo",  t:"Anglo + Terceros",           c:"#E3A008", full:false, nota:"Programa Anglo + Terceros: avance por cantidad de actividades y OT, sin horas."},
+  {k:"otras",  t:"Adicionales",                c:"#8A97AD", full:false, nota:"Actividades adicionales fuera de la Gantt: avance por cantidad de actividades y OT, sin horas."},
 ];
 let tab = "gantt", chip = "todas", ultimos = [];
 function setTab(k){ tab = k; chip = "todas"; render(ultimos); }
@@ -397,7 +402,11 @@ function render(todos){
       <div class="pie">Plan a la fecha: actividades y OT cuyo término en la Gantt ya pasó; horas con prorrateo lineal entre inicio y término.${P.sinFecha?` ${P.sinFecha} actividad${P.sinFecha===1?"":"es"} sin fecha en la Gantt no entra${P.sinFecha===1?"":"n"} al plan.`:""}</div>`;
   } else {
     cuerpo = `
-      <div class="estados solo">${apilada("Actividades", X.acts)}${apilada("OT", X.ots)}</div>
+      <div class="meters m2">
+        ${medidor("Avance por actividades", X.pAct, `${X.acts.c} de ${X.acts.t} actividades realizadas`, null, `<span>Faltan <b class="num">${X.acts.t-X.acts.c}</b> por completar</span>`, T.c)}
+        ${medidor("Avance por OT", X.pOT, `${X.ots.c} de ${X.ots.t} OT realizadas`, null, `<span>Faltan <b class="num">${X.ots.t-X.ots.c}</b> por completar</span>`, T.c)}
+      </div>
+      <div class="estados">${apilada("Actividades", X.acts)}${apilada("OT", X.ots)}</div>
       <div class="hechos"><span>Personas en terreno<b>${X.personas}</b></span></div>`;
   }
   document.getElementById("control").innerHTML = `
@@ -445,9 +454,11 @@ function cardsHtml(ots, ahora){
           <span class="pill ${nv}">${PILL[o.estado]}</span>
         </div>
         <div class="tags">${vencida?'<span class="tag venc">FUERA DE PLAZO</span>':''}${o.alerta?'<span class="tag obs">⚠ OBS. PLANIF.</span>':''}</div>
+        <div class="act-nom">${o.actNombres.join(" · ")}</div>
+        ${o.comps.length?`<div class="act-comp">${o.comps.join(" · ")}</div>`:""}
         <div class="actividad">${detalle}</div>
         <div class="prog-wrap">
-          <div class="prog-top"><span class="prog-pct">${o.avance}%</span><span class="prog-hrs">${o.hrs}h est · ${o.real}h real</span></div>
+          <div class="prog-top"><span class="prog-pct">${o.avance}%</span><span class="prog-hrs">${(o.hrs||o.real)?`${o.hrs}h est · ${o.real}h real`:`${o.hechas} de ${o.acts} act.`}</span></div>
           <div class="bar"><div class="bar-fill fill-${nv}" style="width:${o.avance}%"></div></div>
         </div>
         ${gente ? `<div class="terreno"><span class="icon">●</span>${gente}</div>` : ""}
@@ -464,9 +475,9 @@ function tablaOtras(filas){
   return `
     <div class="otras-sub">No están en la carta Gantt. Solo se informa cantidad realizada.</div>
     <table class="otras-tabla">
-      <thead><tr><th>OT</th><th>Equipo</th><th>Actividad</th><th>Estado</th><th>Avance</th></tr></thead>
+      <thead><tr><th>OT</th><th>Equipo</th><th>Componente</th><th>Actividad</th><th>Estado</th><th>Avance</th></tr></thead>
       <tbody>${lista.map(f=>`<tr>
-        <td class="mono">${f.ot && f.ot!=="-" ? f.ot : "Sin OT"}</td><td>${f.equipo}</td>
+        <td class="mono">${f.ot && f.ot!=="-" ? f.ot : "Sin OT"}</td><td>${f.equipo}</td><td>${f.comp||"—"}</td>
         <td>${f.actividad}${f.obs?`<div style="color:var(--dim);font-size:11px;margin-top:2px">${f.obs}</div>`:""}</td>
         <td>${f.estado||"—"}</td><td>${f.avance}%</td></tr>`).join("")}</tbody>
     </table>`;
@@ -564,6 +575,7 @@ function parseCSV(texto){
     obs: headers.findIndex(h=>h.startsWith("observaci")),
     alerta: headers.findIndex(h=>h.startsWith("alerta")),
     tipoAct: headers.findIndex(h=>h==="tipo actividad"),
+    comp: headers.findIndex(h=>h==="sistema componente"||h==="componente"),
   };
   const filas = [];
   for(let i=headerIdx+1;i<lineas.length;i++){
@@ -574,6 +586,7 @@ function parseCSV(texto){
       equipo: c[idx.equipo]||"",
       ot: c[idx.ot]||"",
       actividad: c[idx.actividad]||"",
+      comp: idx.comp>=0 ? (c[idx.comp]||"").trim() : "",
       avance: parseAvance(c[idx.avance]),
       hrs: parseNum(c[idx.hrs]),
       horasReal: idx.duracionReal>=0 ? parseNum(c[idx.duracionReal]) : 0,
