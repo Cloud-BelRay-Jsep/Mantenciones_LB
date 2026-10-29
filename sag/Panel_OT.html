@@ -394,7 +394,7 @@ async function cargarCaptura(){
 }
 
 // Solo se aceptan enlaces http(s); cualquier otro valor se ignora
-function urlSegura(u){ u=(u||"").trim(); return /^https?:\/\//i.test(u) ? u.replace(/"/g,"%22") : ""; }
+function urlSegura(u){ u=(u||"").trim(); return /^(https?:\/\/|docs\/)/i.test(u) ? u.replace(/"/g,"%22") : ""; }
 async function cargarOperaciones(){
   if(!OPERACIONES_CSV_URL) return [];
   try{
@@ -434,7 +434,8 @@ async function cargarLubricantes(){
     const h = parseLinea(lineas[hIdx]).map(x=>x.trim().toLowerCase());
     const f = n => h.findIndex(x=>x===n || x.startsWith(n));
     const ix = {ot:f("ot"), equipo:f("equipo"), punto:f("punto"), marca:f("marca"), lub:f("lubricante"),
-                cant:f("cantidad"), unidad:f("unidad"), obs:f("observaci"), hds:f("hds"), ficha:f("ficha"), comp:f("componente")};
+                cant:f("cantidad"), unidad:f("unidad"), obs:f("observaci"), hds:f("hds"), ficha:f("ficha"), comp:f("componente"),
+                hdsL:h.findIndex(x=>x==="hds local"), fichaL:h.findIndex(x=>x==="ficha local")};
     const g = (c,i)=> i>=0 ? (c[i]||"").trim() : "";
     const out = [];
     for(let i=hIdx+1;i<lineas.length;i++){
@@ -442,7 +443,7 @@ async function cargarLubricantes(){
       const ot = g(c,ix.ot).replace(/\.0$/,"");
       if(!ot) continue;
       out.push({ot, equipo:g(c,ix.equipo), punto:g(c,ix.punto), marca:g(c,ix.marca), lub:g(c,ix.lub),
-                cant:g(c,ix.cant), unidad:g(c,ix.unidad), obs:g(c,ix.obs), hds:urlSegura(g(c,ix.hds)), ficha:urlSegura(g(c,ix.ficha)), comp:g(c,ix.comp)});
+                cant:g(c,ix.cant), unidad:g(c,ix.unidad), obs:g(c,ix.obs), hds:urlSegura(g(c,ix.hdsL)) || urlSegura(g(c,ix.hds)), ficha:urlSegura(g(c,ix.fichaL)) || urlSegura(g(c,ix.ficha)), comp:g(c,ix.comp)});
     }
     return out;
   }catch(e){ return []; }
@@ -988,7 +989,7 @@ function lubRowHtml(l, conComp){
         ${l.cant ? `<div class="lub-cant">${l.cant} <small>${l.unidad||""}</small></div>` : (l.lub ? `<div class="lub-pend">Volumen por definir</div>` : "")}
       </div>
       ${l.obs ? `<div class="lub-obs">${l.obs}</div>` : ""}
-      ${(l.hds||l.ficha) ? `<div class="lub-docs">${l.hds?`<a href="${l.hds}" target="_blank" rel="noopener">HDS</a>`:""}${l.ficha?`<a href="${l.ficha}" target="_blank" rel="noopener">Ficha técnica</a>`:""}</div>` : ""}
+      ${(l.hds||l.ficha) ? `<div class="lub-docs">${l.hds?`<a href="${l.hds}" ${/^docs\//i.test(l.hds)?"download":'target="_blank" rel="noopener"'}>HDS</a>`:""}${l.ficha?`<a href="${l.ficha}" ${/^docs\//i.test(l.ficha)?"download":'target="_blank" rel="noopener"'}>Ficha técnica</a>`:""}</div>` : ""}
     </div>`;
 }
 function lubsDeActividad(a, lubs){
