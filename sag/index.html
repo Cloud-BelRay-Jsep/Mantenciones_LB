@@ -6,344 +6,472 @@
 <title>Panel MM · Bel-Ray — Anglo American Los Bronces</title>
 <style>
   :root{
-    --bg:#0B1220; --panel:#131C2E; --panel2:#1A2438; --line:#243049;
+    --bg:#0B1220; --panel:#131C2E; --panel2:#1A2438; --line:#243049; --line2:#1D2740;
     --text:#E8EDF6; --muted:#8A97AD; --dim:#5E6B82;
     --verde:#3FB950; --verdeBg:#132819;
     --ambar:#E3A008; --ambarBg:#2A2109;
     --rojo:#F0616D; --rojoBg:#2A1216;
     --azul:#3B82F6; --azulBg:#0E1D33;
     --acento:#4FD1C5;
+    --gris:#55627A;
   }
   *{margin:0;padding:0;box-sizing:border-box}
-  body{
-    background:var(--bg); color:var(--text);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-    padding:20px; min-height:100vh;
-  }
-  .top{
-    display:flex; justify-content:space-between; align-items:center;
-    border-bottom:1px solid var(--line); padding-bottom:14px; margin-bottom:18px;
-  }
-  .brand{display:flex; align-items:baseline; gap:12px}
-  .brand h1{font-size:20px; font-weight:600; letter-spacing:0.5px}
+  body{background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; padding:18px 20px 28px; min-height:100vh}
+  .wrap{max-width:1500px; margin:0 auto}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* ---------- Encabezado ---------- */
+  .top{display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; border-bottom:1px solid var(--line); padding-bottom:12px; margin-bottom:14px}
+  .brand{display:flex; align-items:center; gap:14px; flex-wrap:wrap}
+  .brand h1{font-size:19px; font-weight:650; letter-spacing:.5px}
   .brand .sub{font-size:12px; color:var(--muted)}
-  .status{display:flex; align-items:center; gap:18px; font-size:12px; color:var(--muted)}
-  .live{display:flex; align-items:center; gap:6px}
+  .status{display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:12px; color:var(--muted)}
+  .btn-nav{color:var(--muted); text-decoration:none; font-size:12.5px; background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:6px 14px; cursor:pointer; font-family:inherit; white-space:nowrap}
+  .btn-nav:hover{color:var(--text); border-color:var(--muted)}
+  .btn-nav.off{opacity:.4; pointer-events:none}
+  .live{display:flex; align-items:center; gap:6px; margin-left:6px}
   .dot{width:8px; height:8px; border-radius:50%; background:var(--verde); animation:pulse 2s infinite}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
   .clock{font-variant-numeric:tabular-nums; font-size:14px; color:var(--text)}
 
-  .kpis{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px}
-  .kpi{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px 12px}
-  .kpi .label{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.4px}
-  .kpi .value{font-size:24px; font-weight:700; margin-top:2px; font-variant-numeric:tabular-nums}
-  .kpi .value small{font-size:13px; color:var(--muted); font-weight:400}
+  /* ---------- Tarjeta de control (todos los indicadores en un solo lugar) ---------- */
+  .control{background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden; margin-bottom:18px}
+  .tabs{display:flex; gap:2px; overflow-x:auto; border-bottom:1px solid var(--line); background:#0F1829; padding:0 6px; scrollbar-width:thin}
+  .tab{appearance:none; border:0; background:transparent; color:var(--muted); font:inherit; font-size:13px; font-weight:600; padding:13px 14px 11px; cursor:pointer; white-space:nowrap; border-bottom:3px solid transparent; display:flex; align-items:center; gap:8px}
+  .tab:hover{color:var(--text)}
+  .tab .n{font-size:11px; font-weight:600; color:var(--dim); background:var(--panel2); border-radius:10px; padding:1px 7px}
+  .tab.on{color:var(--text); border-bottom-color:var(--c)}
+  .tab.on .n{background:var(--c); color:#fff}
+  .tabs .corte{margin-left:auto; align-self:center; font-size:11px; color:var(--dim); padding:0 10px; white-space:nowrap}
 
-  .section-title{font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin:6px 0 12px}
+  .ctl-body{padding:16px 18px 14px}
+  .ctl-nota{font-size:12px; color:var(--muted); margin-bottom:12px}
+
+  /* medidores: cumplimiento + plan a la fecha */
+  .meters{display:grid; grid-template-columns:repeat(3,1fr)}
+  .meter{padding:2px 18px 4px}
+  .meter:first-child{padding-left:0}
+  .meter:last-child{padding-right:0}
+  .meter + .meter{border-left:1px solid var(--line)}
+  .m-label{font-size:11px; letter-spacing:.9px; text-transform:uppercase; color:var(--muted); font-weight:600}
+  .m-main{display:flex; align-items:baseline; gap:10px; margin:4px 0 8px; flex-wrap:wrap}
+  .m-pct{font-size:36px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums}
+  .m-pct small{font-size:18px; color:var(--muted); font-weight:500}
+  .m-frac{font-size:12.5px; color:var(--muted)}
+  .bullet{position:relative; height:10px; background:var(--panel2); border-radius:6px; overflow:visible}
+  .b-fill{height:100%; border-radius:6px; background:var(--c)}
+  .b-plan{position:absolute; top:-4px; width:3px; height:18px; background:#fff; border-radius:2px; box-shadow:0 0 0 2px var(--panel)}
+  .m-plan{display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:9px; font-size:12px; color:var(--muted); flex-wrap:wrap}
+  .m-plan b{color:var(--text); font-weight:650}
+  .gap{font-size:11px; font-weight:700; padding:2px 9px; border-radius:12px; white-space:nowrap}
+  .gap.pos{background:var(--verdeBg); color:var(--verde)}
+  .gap.neg{background:var(--rojoBg); color:var(--rojo)}
+  .gap.eq{background:var(--panel2); color:var(--muted)}
+  .m-leg{font-size:10.5px; color:var(--dim); margin-top:3px}
+  .m-leg i{display:inline-block; width:3px; height:10px; background:#fff; border-radius:2px; vertical-align:-1px; margin-right:4px}
+
+  /* estado: barras apiladas */
+  .estados{display:grid; grid-template-columns:1fr 1fr; gap:0 28px; margin-top:16px; padding-top:14px; border-top:1px solid var(--line)}
+  .estados.solo{grid-template-columns:1fr 1fr; margin-top:0; padding-top:0; border-top:0}
+  .est-t{display:flex; justify-content:space-between; align-items:baseline; font-size:11px; letter-spacing:.9px; text-transform:uppercase; color:var(--muted); font-weight:600; margin-bottom:6px}
+  .est-t b{font-size:15px; letter-spacing:0; color:var(--text); text-transform:none}
+  .stack{display:flex; height:12px; border-radius:6px; overflow:hidden; background:var(--panel2)}
+  .stack span{display:block; height:100%}
+  .leyenda{display:flex; flex-wrap:wrap; gap:4px 14px; margin-top:8px; font-size:12px; color:var(--muted)}
+  .leyenda b{color:var(--text); font-weight:650; font-variant-numeric:tabular-nums}
+  .sw{display:inline-block; width:9px; height:9px; border-radius:3px; margin-right:5px; vertical-align:0}
+  .c-ok{background:var(--verde)} .c-pr{background:var(--ambar)} .c-pe{background:var(--gris)} .c-pa{background:var(--rojo)}
+
+  .hechos{display:flex; flex-wrap:wrap; gap:6px 26px; margin-top:14px; padding-top:12px; border-top:1px solid var(--line); font-size:12px; color:var(--muted)}
+  .hechos b{color:var(--text); font-size:14px; font-weight:650; font-variant-numeric:tabular-nums; margin-left:4px}
+  .pie{font-size:10.5px; color:var(--dim); margin-top:10px; line-height:1.4}
+
+  /* ---------- Listado ---------- */
+  .lista{border:1.5px solid var(--c, var(--line)); border-radius:14px; padding:14px; background:var(--panel-tint, transparent)}
+  .lista-head{display:flex; justify-content:space-between; align-items:center; gap:10px 16px; flex-wrap:wrap; margin-bottom:12px}
+  .lista-head h2{font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; font-weight:600}
+  .lista-head h2 b{color:var(--text); letter-spacing:.5px}
+  .chips{display:flex; flex-wrap:wrap; gap:6px}
+  .chip{cursor:pointer; font:inherit; font-size:12px; padding:5px 12px; border-radius:8px; border:1px solid var(--line); background:transparent; color:var(--muted)}
+  .chip.on{border-color:var(--acento); background:#10233f; color:#7FD8CF}
+  .chip .n{opacity:.7; margin-left:4px}
 
   .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:8px}
-  .card{
-    background:var(--panel); border:1px solid var(--line); border-radius:8px;
-    padding:9px 11px; position:relative; overflow:hidden;
-  }
-  .card.crit{border-left:3px solid var(--rojo)}
-  .card.warn{border-left:3px solid var(--ambar)}
-  .card.ok{border-left:3px solid var(--verde)}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:9px 11px; position:relative; overflow:hidden}
+  .card.crit{border-left:3px solid var(--rojo)} .card.warn{border-left:3px solid var(--ambar)} .card.ok{border-left:3px solid var(--verde)}
   .card-head{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:2px; gap:6px}
   .equipo{font-size:12.5px; font-weight:600; line-height:1.2}
-  .otras-title{font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); margin:26px 0 4px}
+  .ot{font-size:9.5px; color:var(--dim); font-family:ui-monospace,monospace; margin-top:1px}
+  .pill{font-size:9px; font-weight:700; padding:2px 7px; border-radius:14px; white-space:nowrap; flex-shrink:0}
+  .pill.crit{background:var(--rojoBg); color:var(--rojo)} .pill.warn{background:var(--ambarBg); color:var(--ambar)} .pill.ok{background:var(--verdeBg); color:var(--verde)}
+  .tags{display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; min-height:4px}
+  .tag{font-size:9px; font-weight:700; letter-spacing:.5px; padding:1px 6px; border-radius:4px; white-space:nowrap; line-height:1.4}
+  .tag.obs{border:1px solid #E3B341; color:#E3B341}
+  .tag.venc{border:1px solid var(--rojo); color:var(--rojo)}
+  .actividad{font-size:10.5px; color:var(--muted); margin:3px 0 6px; line-height:1.3}
+  .prog-top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:3px}
+  .prog-pct{font-size:16px; font-weight:700; font-variant-numeric:tabular-nums}
+  .prog-hrs{font-size:9.5px; color:var(--dim)}
+  .bar{height:6px; background:var(--panel2); border-radius:4px; overflow:hidden}
+  .bar-fill{height:100%; border-radius:4px; transition:width .6s ease}
+  .fill-ok{background:var(--verde)} .fill-warn{background:var(--ambar)} .fill-crit{background:var(--rojo)}
+  .terreno{display:flex; align-items:center; flex-wrap:wrap; gap:4px; padding-top:5px; margin-top:4px; border-top:1px solid var(--line); font-size:9.5px}
+  .terreno .icon{color:var(--acento); font-size:8px}
+  .persona{background:var(--azulBg); color:#7FB2F5; padding:1px 6px; border-radius:10px; font-size:9.5px; font-weight:500}
+  .empty{color:var(--dim); text-align:center; padding:34px; font-size:14px; grid-column:1/-1}
+
   .otras-sub{font-size:11px; color:var(--dim); margin-bottom:10px}
   .otras-tabla{width:100%; border-collapse:collapse; font-size:12px; background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden}
   .otras-tabla th{text-align:left; font-weight:600; color:var(--dim); font-size:10px; letter-spacing:1px; text-transform:uppercase; padding:8px 10px; border-bottom:1px solid var(--line)}
   .otras-tabla td{padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; line-height:1.35}
   .otras-tabla tr:last-child td{border-bottom:none}
   .otras-tabla .mono{font-family:ui-monospace,monospace; font-size:11px; color:var(--dim); white-space:nowrap}
-  .tags{display:flex; flex-wrap:wrap; gap:4px; margin-top:4px}
-  .tag{font-size:9px; font-weight:700; letter-spacing:.5px; padding:1px 6px; border-radius:4px; white-space:nowrap; line-height:1.4}
-  .tag.br{border:1.5px solid var(--text); color:var(--text)}
-  .tag.aa{border:1.5px dashed var(--dim); color:var(--dim)}
-  .tag.g{background:var(--text); color:var(--bg); border:1.5px solid var(--text)}
-  .tag.p{border:1px dotted var(--dim); color:var(--dim)}
-  .tag.obs{border:1px solid #E3B341; color:#E3B341}
-  .ot{font-size:9.5px; color:var(--dim); font-family:ui-monospace,monospace; margin-top:1px}
-  .pill{font-size:9px; font-weight:700; padding:2px 7px; border-radius:14px; white-space:nowrap; flex-shrink:0}
-  .pill.crit{background:var(--rojoBg); color:var(--rojo)}
-  .pill.warn{background:var(--ambarBg); color:var(--ambar)}
-  .pill.ok{background:var(--verdeBg); color:var(--verde)}
-  .actividad{font-size:10.5px; color:var(--muted); margin:3px 0 6px; line-height:1.3}
 
-  .prog-wrap{margin-bottom:4px}
-  .prog-top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:3px}
-  .prog-pct{font-size:16px; font-weight:700; font-variant-numeric:tabular-nums}
-  .prog-hrs{font-size:9.5px; color:var(--dim)}
-  .bar{height:6px; background:var(--panel2); border-radius:4px; overflow:hidden}
-  .bar-fill{height:100%; border-radius:4px; transition:width 0.6s ease}
-  .fill-ok{background:var(--verde)} .fill-warn{background:var(--ambar)} .fill-crit{background:var(--rojo)}
+  .footer{margin-top:22px; text-align:center; font-size:11px; color:var(--dim)}
 
-  .terreno{display:flex; align-items:center; flex-wrap:wrap; gap:4px; padding-top:5px; margin-top:4px; border-top:1px solid var(--line); font-size:9.5px}
-  .terreno .icon{color:var(--acento); font-size:8px}
-  .persona{background:var(--azulBg); color:#7FB2F5; padding:1px 6px; border-radius:10px; font-size:9.5px; font-weight:500}
-  .en-terreno-tag{
-    position:absolute; top:14px; right:14px; display:none;
+  @media(max-width:900px){
+    .meters{grid-template-columns:1fr}
+    .meter{padding:12px 0}
+    .meter + .meter{border-left:0; border-top:1px solid var(--line)}
+    .estados{grid-template-columns:1fr; gap:14px}
+    .tabs .corte{display:none}
   }
-
-  .empty{color:var(--dim); text-align:center; padding:40px; font-size:14px}
-  .footer{margin-top:24px; text-align:center; font-size:11px; color:var(--dim)}
-  @media(max-width:640px){
-    .kpis{grid-template-columns:repeat(2,1fr)}
-    .grid{grid-template-columns:1fr}
-  }
-  .btn-nav{color:var(--muted,#8A97AD); text-decoration:none; font-size:13px; background:var(--panel,#131C2E); border:1px solid var(--line,#243049); border-radius:20px; padding:6px 14px; margin-right:14px}
-  .btn-nav:hover{color:#E8EDF6; border-color:#8A97AD}
-  .kpi-grupo{margin-bottom:18px}
-  .kpi-titulo{display:flex; align-items:baseline; gap:10px; margin-bottom:8px; flex-wrap:wrap}
-  .kpi-tag{font-size:11px; font-weight:700; letter-spacing:.6px; padding:3px 10px; border-radius:6px; border:2px solid #E8EDF6; color:#E8EDF6}
-  .kpi-tag.punt{border:1.5px dashed #8A97AD; color:#C9D3E3}
-  .kpi-nota{font-size:12px; color:#8A97AD}
+  @media(max-width:640px){ body{padding:12px} .grid{grid-template-columns:1fr} .m-pct{font-size:32px} }
 </style>
 </head>
 <body>
+<div class="wrap">
   <div class="top">
     <div class="brand">
+      <a class="btn-nav off" id="btnAtras" href="#" onclick="return volver()">← Atrás</a>
       <h1>PANEL MANTENCIÓN MAYOR</h1>
       <span class="sub">Bel-Ray · Anglo American Los Bronces · Molienda SAG · MM Octubre 2026</span>
     </div>
     <div class="status">
       <a class="btn-nav" href="Panel_OT.html">Panel OT →</a>
+      <a class="btn-nav" href="Acreditaciones.html">Acreditaciones →</a>
       <div class="live"><span class="dot"></span> EN VIVO</div>
       <div class="clock" id="clock">--:--:--</div>
     </div>
   </div>
 
-  <div id="kpis"></div>
-
-  <div class="section-title">Frentes de trabajo en tiempo real</div>
-  <div id="filtroResp" style="margin:0 0 12px"></div>
-  <div class="grid" id="grid">
-    <div class="empty">Cargando datos del Sheet…</div>
-  </div>
-
-  <div id="otrasWrap"></div>
+  <section class="control" id="control"><div class="ctl-body"><div class="empty">Cargando datos del Sheet…</div></div></section>
+  <section class="lista" id="lista"></section>
 
   <div class="footer" id="footer">Última actualización: — · Se refresca automáticamente cada 30 segundos</div>
+</div>
 
 <script>
 // ============================================================
-//  CONFIGURACIÓN — pega las URLs de tus dos hojas publicadas
+//  CONFIGURACIÓN — URLs de las hojas publicadas como CSV
+//    CAPTURA      → SHEET_CSV_URL (tareas)
+//    REGISTRO_NFC → NFC_CSV_URL   (personas en terreno)
 // ============================================================
-//  Necesitas publicar DOS pestañas como CSV:
-//  Archivo > Compartir > Publicar en la web
-//    1) pestaña CAPTURA      > CSV  → pégala en SHEET_CSV_URL
-//    2) pestaña REGISTRO_NFC > CSV  → pégala en NFC_CSV_URL
-//  Si las dejas vacías, el panel usa datos de ejemplo.
 const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuKIv4RpPLmGUOHTrClUnWR1MpW7RLIVczjE4MfweIp-KeuwoaPtnfQVpL2ohNXqitH4b93zFO9xPV/pub?gid=1096962834&single=true&output=csv";   // CAPTURA (tareas)
 const NFC_CSV_URL   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuKIv4RpPLmGUOHTrClUnWR1MpW7RLIVczjE4MfweIp-KeuwoaPtnfQVpL2ohNXqitH4b93zFO9xPV/pub?gid=109866302&single=true&output=csv";   // REGISTRO_NFC (personas en terreno)
 const REFRESH_MS = 30000; // 30 segundos
 
-// Datos de ejemplo (tu data real del 11-07) mientras conectas el Sheet
+// Ventana planificada de cada OT en la carta Gantt: [inicio, término] (hora de Chile). Sirve para el "plan a la fecha".
+const GANTT_FECHAS = {
+  "4015989511": ["26-10-2026 10:00","26-10-2026 14:00"],
+  "4014794992": ["26-10-2026 10:00","26-10-2026 20:00"],
+  "4016182667": ["26-10-2026 10:00","27-10-2026 02:00"],
+  "4016568295": ["26-10-2026 13:00","27-10-2026 01:00"],
+  "4014794996": ["26-10-2026 13:00","26-10-2026 19:00"],
+  "4014794993": ["26-10-2026 13:30","30-10-2026 09:30"],
+  "4014795001": ["26-10-2026 14:00","26-10-2026 16:00"],
+  "4015904691": ["26-10-2026 15:30","27-10-2026 13:30"],
+  "4010660939": ["26-10-2026 17:00","27-10-2026 01:00"],
+  "4009618975": ["26-10-2026 18:00","27-10-2026 06:00"],
+  "4016843245": ["27-10-2026 01:00","27-10-2026 09:00"],
+  "4016182714": ["27-10-2026 02:00","27-10-2026 18:00"],
+  "4017015596": ["27-10-2026 09:00","27-10-2026 21:00"],
+  "4014679902": ["27-10-2026 12:30","28-10-2026 10:30"],
+  "4017023272": ["27-10-2026 18:00","28-10-2026 00:00"],
+  "4016182732": ["28-10-2026 00:00","28-10-2026 16:00"],
+  "4016182590": ["28-10-2026 07:00","28-10-2026 23:00"],
+  "4015989510": ["28-10-2026 09:30","28-10-2026 13:30"],
+  "4017183194": ["28-10-2026 16:00","29-10-2026 08:00"],
+  "4015904730": ["28-10-2026 19:30","28-10-2026 21:30"],
+  "4016182682": ["28-10-2026 23:00","29-10-2026 11:00"],
+  "4015791552": ["29-10-2026 04:00","31-10-2026 04:00"],
+  "4015485899": ["29-10-2026 08:00","29-10-2026 12:00"],
+  "4015904673": ["29-10-2026 08:30","30-10-2026 08:30"],
+  "4010660947": ["29-10-2026 08:30","29-10-2026 09:30"],
+  "4016182680": ["29-10-2026 11:00","29-10-2026 23:00"],
+  "4015485898": ["29-10-2026 12:00","29-10-2026 16:00"],
+  "4016181966": ["29-10-2026 16:00","29-10-2026 20:00"],
+  "4016568296": ["29-10-2026 20:00","30-10-2026 00:00"],
+  "4016073710": ["30-10-2026 19:30","31-10-2026 07:30"],
+};
+
 const DATOS_EJEMPLO = [
-  {equipo:"Molino SAG", ot:"4013457119", actividad:"Cambio sellos perimetrales MLS001 inferiores", avance:25, hrs:8, criticidad:"Alta", enTerreno:["D. Herrera","J. Molina"]},
-  {equipo:"Molino de Bolas N°2", ot:"4012442142", actividad:"Bombas y sistema de lubricación (17 sub-tareas)", avance:12, hrs:17, criticidad:"Alta", enTerreno:["F. Manqueche"]},
-  {equipo:"Molino SAG", ot:"4012441947", actividad:"Sello molino SAG cambio y lubricación alimentación", avance:0, hrs:4, criticidad:"Alta", enTerreno:[]},
-  {equipo:"Molino de Bolas N°1", ot:"4013457118", actividad:"Cambio sellos perimetrales MLB001", avance:100, hrs:30, criticidad:"Alta", enTerreno:[]},
-  {equipo:"Planta de Cal", ot:"4015377192", actividad:"Cambio de sellos y aceite", avance:0, hrs:6, criticidad:"Alta", enTerreno:[], bloqueado:"Sin MAF ni repuestos"},
+  {equipo:"Molino SAG", ot:"4013457119", actividad:"Cambio sellos perimetrales", avance:25, hrs:8, horasReal:0, enTerreno:[], respons:"Bel-Ray", gantt:true},
+  {equipo:"Molino de Bolas N°1", ot:"4013457118", actividad:"Cambio sellos perimetrales MLB001", avance:100, hrs:30, horasReal:0, enTerreno:[], respons:"Bel-Ray", gantt:true},
 ];
 
-function parseNum(raw){
-  let s = String(raw||"").trim().replace(",",".");
-  let v = parseFloat(s);
-  return isNaN(v) ? 0 : v;
+// ---------- utilidades de fecha (hora de Chile, sin depender de la zona del navegador) ----------
+function ahoraCL(){
+  const p = new Intl.DateTimeFormat("sv-SE",{timeZone:"America/Santiago",hourCycle:"h23",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"}).format(new Date());
+  const m = p.match(/(\d+)-(\d+)-(\d+)\D+(\d+):(\d+):(\d+)/);
+  return Date.UTC(+m[1],+m[2]-1,+m[3],+m[4],+m[5],+m[6]);
+}
+function aMs(s){ const m = String(s).match(/^(\d+)-(\d+)-(\d+)\s+(\d+):(\d+)/); return m ? Date.UTC(+m[3],+m[2]-1,+m[1],+m[4],+m[5]) : null; }
+function ventana(ot){ const f = GANTT_FECHAS[String(ot).trim()]; return f ? {ini:aMs(f[0]), fin:aMs(f[1])} : null; }
+const p2 = n => String(n).padStart(2,"0");
+function fmtMs(ms){ const d = new Date(ms); return `${p2(d.getUTCDate())}-${p2(d.getUTCMonth()+1)} ${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}`; }
+function fmtMsFull(ms){ const d = new Date(ms); return `${p2(d.getUTCDate())}-${p2(d.getUTCMonth()+1)}-${d.getUTCFullYear()} ${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}`; }
+
+function parseNum(raw){ let v = parseFloat(String(raw||"").trim().replace(",",".")); return isNaN(v) ? 0 : v; }
+function parseAvance(raw){ let v = parseFloat(String(raw||"").trim().replace("%","").replace(",",".")); return isNaN(v) ? 0 : Math.round(v); }
+
+// ---------- reglas de estado (una sola definición para indicadores y tarjetas) ----------
+const pausa = r => !!r.bloqueado && r.avance < 100;                    // pausada = con "Pausado por" y sin terminar
+const claseAct = r => r.avance>=100 ? "c" : (pausa(r) ? "z" : (r.avance>0 ? "p" : "n"));
+const claseOT  = rs => rs.every(r=>r.avance>=100) ? "c" : (rs.some(pausa) ? "z" : (rs.some(r=>r.avance>0) ? "p" : "n"));
+const PILL = {c:"COMPLETADA", p:"EN PROCESO", n:"SIN INICIAR", z:"PAUSADA"};
+const NIVEL = {c:"ok", p:"warn", z:"warn", n:"crit"};
+
+const grupoDe = r => /apoyo/i.test(r||"") ? "apoyo" : (/otra/i.test(r||"") ? "otras" : (/anglo|tercero/i.test(r||"") ? "anglo" : "belray"));
+
+// Todos los electroimanes cuentan como UNA sola actividad junto con su correa
+const codCT = e => { const m=/ct-?\s*(\d+(?:\.\d+)?)/i.exec(e||""); return m?m[1]:""; };
+function fusionarElectroimanes(rows){
+  const copia = rows.map(r=>Object.assign({},r));
+  const esEl = r => /electro\s*-?\s*im[aá]n/i.test(r.equipo);
+  const res = copia.filter(r=>!esEl(r));
+  copia.filter(esEl).forEach(e=>{
+    const c = res.find(r=>r.ot===e.ot && /^correa/i.test(r.equipo) && codCT(r.equipo)===codCT(e.equipo));
+    if(!c){ res.push(e); return; }
+    if(!c._n){ c._n = 1; c._sum = c.avance; c.equipo += " + Electroimán"; }
+    c._n++; c._sum += e.avance;
+    c.avance = Math.floor(c._sum/c._n);                 // llega a 100% solo cuando ambos están al 100%
+    c.hrs += e.hrs; c.horasReal = (c.horasReal||0) + (e.horasReal||0);
+    if(e.actividad && e.actividad!==c.actividad) c.actividad += " + " + e.actividad;
+    if(e.enTerreno && e.enTerreno.length) c.enTerreno = (c.enTerreno||[]).concat(e.enTerreno);
+    if(e.bloqueado && !c.bloqueado) c.bloqueado = e.bloqueado;
+    if(e.alerta) c.alerta = true;
+  });
+  return res;
 }
 
-function parseAvance(raw){
-  let s = String(raw||"").trim().replace("%","").replace(",",".");
-  let v = parseFloat(s);
-  if(isNaN(v)) return 0;
-  return Math.round(v);
-}
-
-function nivel(av, bloqueado){
-  if(bloqueado) return "warn";
-  if(av >= 100) return "ok";
-  if(av < 50) return "crit";
-  return "warn";
-}
-function pillText(av, bloqueado){
-  if(bloqueado) return "BLOQUEADO";
-  if(av >= 100) return "COMPLETADA";
-  if(av === 0) return "SIN INICIAR";
-  return "EN PROCESO";
-}
-
+// ---------- una tarjeta por OT ----------
 function agruparPorOT(datos){
   const mapa = {};
   datos.forEach(d=>{
-    const kOT = d.ot;   // una sola tarjeta por OT (aunque tenga actividades de distintos grupos)
-    if(!mapa[kOT]){
-      mapa[kOT] = {
-        ot:d.ot, equipo:d.equipo, hrsTotal:0, hrsGanadas:0, horasReal:0,
-        actividades:0, completadas:0, enProceso:0, sinIniciar:0, sumAv:0, gantt:false,
-        bloqueado:"", enTerreno:[], respons:d.respons||"", grupos:[], alerta:false
-      };
-    }
-    const g = mapa[kOT];
-    g.hrsTotal += d.hrs;
-    g.hrsGanadas += d.hrs * d.avance / 100;
-    g.horasReal += d.horasReal||0;
-    g.sumAv += d.avance; if(d.gantt) g.gantt = true;
-    g.actividades++;
-    if(d.avance>=100) g.completadas++;
-    else if(d.avance>0) g.enProceso++;
-    else g.sinIniciar++;
+    const g = mapa[d.ot] || (mapa[d.ot] = {ot:d.ot, equipos:[], filas:[], hrs:0, ganadas:0, real:0, sumAv:0, bloqueado:"", enTerreno:[], alerta:false});
+    if(d.equipo && !g.equipos.includes(d.equipo)) g.equipos.push(d.equipo);
+    g.filas.push(d);
+    g.hrs += d.hrs; g.ganadas += d.hrs*d.avance/100; g.real += d.horasReal||0; g.sumAv += d.avance;
     if(d.bloqueado && !g.bloqueado) g.bloqueado = d.bloqueado;
     if(d.alerta) g.alerta = true;
-    { const gg = grupoDe(d.respons); if(!g.grupos.includes(gg)) g.grupos.push(gg); }
     if(d.enTerreno && d.enTerreno.length) g.enTerreno = g.enTerreno.concat(d.enTerreno);
   });
   return Object.values(mapa).map(g=>({
-    ot:g.ot, equipo:g.equipo,
-    // con horas: ponderado por horas; sin horas (actividades fuera de la Gantt): promedio simple
-    avance: g.hrsTotal>0 ? Math.round(g.hrsGanadas/g.hrsTotal*100) : (g.actividades ? Math.round(g.sumAv/g.actividades) : 0),
-    hrs: Math.round(g.hrsTotal*10)/10,
-    horasReal: Math.round(g.horasReal*10)/10,
-    actividades:g.actividades, completadas:g.completadas,
-    enProceso:g.enProceso, sinIniciar:g.sinIniciar,
-    bloqueado:g.bloqueado, enTerreno:[...new Set(g.enTerreno)],
-    respons:g.respons, grupos:g.grupos, alerta:g.alerta, gantt:g.gantt
+    ot:g.ot, equipo:g.equipos.join(" · "),
+    avance: g.hrs>0 ? Math.round(g.ganadas/g.hrs*100) : (g.filas.length ? Math.round(g.sumAv/g.filas.length) : 0),   // con horas: ponderado; sin horas: promedio simple
+    hrs:Math.round(g.hrs*10)/10, real:Math.round(g.real*10)/10,
+    acts:g.filas.length, hechas:g.filas.filter(r=>r.avance>=100).length,
+    estado:claseOT(g.filas), bloqueado:g.bloqueado, enTerreno:[...new Set(g.enTerreno)], alerta:g.alerta, vent:ventana(g.ot)
   }));
 }
 
-const grupoDe = r => /apoyo/i.test(r||"") ? "apoyo" : (/otra/i.test(r||"") ? "otras" : (/anglo|tercero/i.test(r||"") ? "anglo" : "belray"));
-const ETQ = {belray:"BEL-RAY", apoyo:"APOYO AA", anglo:"ANGLO + TERCEROS", otras:"OTRAS"};
-const esApoyo = r => grupoDe(r)!=="belray";
-let filtro = "todas", ultimosDatos = [];
-function setFiltro(f){ filtro=f; render(ultimosDatos); }
-window.setFiltro = setFiltro;
+// ---------- indicadores de un grupo ----------
+const pct = (a,b) => b>0 ? Math.round(a/b*100) : 0;
+function resumenGrupo(rows, ahora){
+  const acts = {t:rows.length, c:0, p:0, n:0, z:0};
+  rows.forEach(r=>acts[claseAct(r)]++);
+  const porOT = {};
+  rows.forEach(r=>{ (porOT[r.ot] = porOT[r.ot]||[]).push(r); });
+  const ots = {t:0, c:0, p:0, n:0, z:0};
+  Object.values(porOT).forEach(rs=>{ ots.t++; ots[claseOT(rs)]++; });
+  const hrs = rows.reduce((s,r)=>s+r.hrs,0);
+  const ganadas = rows.reduce((s,r)=>s+r.hrs*r.avance/100,0);
+  const real = rows.reduce((s,r)=>s+(r.horasReal||0),0);
+  const personas = new Set(rows.flatMap(r=>r.enTerreno||[])).size;
 
-// Una OT con actividades de varios grupos se cuenta UNA sola vez, en su grupo principal
-// (prioridad: Bel-Ray > Apoyo AA > Anglo + Terceros). Las horas y el avance sí se calculan por actividad.
-let GRUPO_PRINCIPAL = {};
-function resumen(datos, grupo){
-  const gs = [].concat(grupo||[]);
-  const ots = agruparPorOT(datos).filter(o=> !gs.length || gs.includes(GRUPO_PRINCIPAL[o.ot]));
-  const setOT = new Set(ots.map(o=>o.ot));
-  const dOk = datos.filter(d=>setOT.has(d.ot));
-  const hrs = ots.reduce((s,o)=>s+o.hrs,0);
-  const ganadas = dOk.reduce((s,d)=>s+d.hrs*d.avance/100,0);
-  return {
-    ots, total:ots.length,
-    completas: ots.filter(o=>o.avance>=100 && !o.bloqueado).length,
-    enProceso: ots.filter(o=>o.avance>0 && o.avance<100 && !o.bloqueado).length,
-    sinIniciar: ots.filter(o=>o.avance===0 && !o.bloqueado).length,
-    pausadas: ots.filter(o=>o.bloqueado).length,
-    hrs, real: ots.reduce((s,o)=>s+o.horasReal,0),
-    // ponderado por horas Gantt; si no hay horas, promedio simple de avance
-    avance: hrs>0 ? Math.round(ganadas/hrs*100) : (dOk.length ? Math.round(dOk.reduce((s,d)=>s+d.avance,0)/dOk.length) : 0)
-  };
+  // PLAN A LA FECHA: qué debería llevar según la Gantt y qué llevo
+  const pl = {actDeb:0, actLlevo:0, otDeb:0, otLlevo:0, hrsDeb:0, hrsLlevo:0, sinFecha:0};
+  const otVistas = {};
+  rows.forEach(r=>{
+    const v = ventana(r.ot);
+    if(!v){ pl.sinFecha++; return; }
+    if(v.fin <= ahora) pl.actDeb++;
+    if(r.avance >= 100) pl.actLlevo++;
+    const frac = Math.min(1, Math.max(0, (ahora - v.ini) / (v.fin - v.ini || 1)));
+    pl.hrsDeb += r.hrs * frac;                      // horas que debería haber ganado (prorrateo lineal entre inicio y término)
+    pl.hrsLlevo += r.hrs * r.avance / 100;
+    (otVistas[r.ot] = otVistas[r.ot] || {v, rs:[]}).rs.push(r);
+  });
+  Object.values(otVistas).forEach(o=>{ if(o.v.fin <= ahora) pl.otDeb++; if(claseOT(o.rs)==="c") pl.otLlevo++; });
+  return {acts, ots, hrs, ganadas, real, personas, pl,
+          pAct:pct(acts.c,acts.t), pOT:pct(ots.c,ots.t), pHrs:pct(ganadas,hrs)};
 }
 
-function render(todosLosDatos){
-  ultimosDatos = todosLosDatos;
-  const datosOtras = todosLosDatos.filter(d=>grupoDe(d.respons)==="otras");
-  const datosActividades = todosLosDatos.filter(d=>grupoDe(d.respons)!=="otras");
-  renderOtras(datosOtras);
-  const datosBR = datosActividades.filter(d=>grupoDe(d.respons)==="belray");
-  const datosAA = datosActividades.filter(d=>grupoDe(d.respons)==="apoyo");
-  const datosAN = datosActividades.filter(d=>grupoDe(d.respons)==="anglo");
-  const hayApoyo = datosAA.length>0 || datosAN.length>0;
-  GRUPO_PRINCIPAL = {};
-  const PRIO = ["belray","apoyo","anglo"];
-  datosActividades.forEach(d=>{
-    const g = grupoDe(d.respons), cur = GRUPO_PRINCIPAL[d.ot];
-    if(!cur || PRIO.indexOf(g) < PRIO.indexOf(cur)) GRUPO_PRINCIPAL[d.ot] = g;
-  });
-  // Una OT es "GANTT" si alguna de sus actividades tiene Tipo Actividad = Actividades Programadas GANTT
-  const TIPO_OT = {};
-  datosActividades.forEach(d=>{ if(d.gantt) TIPO_OT[d.ot] = true; });
-  const esG = d => !!TIPO_OT[d.ot];
-  const haySplit = datosActividades.some(d=>d.gantt);
-  const datosBRg = datosBR.filter(esG), datosBRp = datosBR.filter(d=>!esG(d));
-  const M = resumen(datosBR.concat(datosAA), ["belray","apoyo"]);   // MACRO: Bel-Ray + Apoyo AA
-  const R = resumen(datosBR, "belray");
-  const Rg = resumen(datosBRg, "belray");
-  const Rp = resumen(datosBRp, "belray");
-  const A = resumen(datosAA, "apoyo");
-  const N = resumen(datosAN, "anglo");
-  const personas = [...new Set(agruparPorOT(datosActividades).flatMap(o=>o.enTerreno))].length;
-
-  // Un bloque de indicadores por grupo, con su etiqueta de texto (sin depender del color):
-  // Bel-Ray = borde sólido · Apoyo AA y Anglo + Terceros = borde punteado
-  const k = (l,v,punt)=>`<div class="kpi"${punt?' style="border-style:dashed"':''}><div class="label">${l}</div><div class="value">${v}</div></div>`;
-  const bloque = (etq, nota, X, punt, extra)=>`
-    <div class="kpi-grupo">
-      <div class="kpi-titulo"><span class="kpi-tag${punt?' punt':''}">${etq}</span><span class="kpi-nota">${nota}</span></div>
-      <div class="kpis">
-        ${k(punt?"Avance":"Cumplimiento", X.avance+"<small>%</small>", punt)}
-        ${k("OT", X.total, punt)}
-        ${k("Completadas", X.completas+"<small>/"+X.total+"</small>", punt)}
-        ${k("En proceso", X.enProceso, punt)}
-        ${k("Sin iniciar", X.sinIniciar, punt)}
-        ${k("Pausadas", X.pausadas, punt)}
-        ${k("Hrs estimadas (Gantt)", X.hrs.toFixed(1), punt)}
-        ${k("Hrs reales medidas", X.real.toFixed(1), punt)}
-        ${extra||""}
+// ---------- componentes visuales ----------
+function brecha(llevo, deb, unidad){
+  const d = Math.round((llevo-deb)*(unidad?10:1))/(unidad?10:1);
+  if(d>0) return `<span class="gap pos">+${d}${unidad||""} adelantado</span>`;
+  if(d<0) return `<span class="gap neg">${String(d).replace("-","−")}${unidad||""} atrasado</span>`;
+  return `<span class="gap eq">en plan</span>`;
+}
+function medidor(etq, pctVal, frac, tickPct, planHtml, color){
+  const tick = tickPct==null ? "" : `<div class="b-plan" style="left:calc(${Math.min(100,Math.max(0,tickPct))}% - 1.5px)"></div>`;
+  return `
+    <div class="meter" style="--c:${color}">
+      <div class="m-label">${etq}</div>
+      <div class="m-main"><span class="m-pct">${pctVal==null?"—":pctVal+"<small>%</small>"}</span><span class="m-frac">${frac}</span></div>
+      <div class="bullet"><div class="b-fill" style="width:${pctVal||0}%"></div>${tick}</div>
+      <div class="m-plan">${planHtml}</div>
+    </div>`;
+}
+function apilada(titulo, X){
+  const seg = (k,c)=> X[k] ? `<span class="${c}" style="width:${X[k]/X.t*100}%"></span>` : "";
+  return `
+    <div>
+      <div class="est-t"><span>${titulo}</span><b class="num">${X.c} <span style="font-weight:400;color:var(--muted);font-size:12px">de ${X.t} realizadas</span></b></div>
+      <div class="stack">${seg("c","c-ok")}${seg("p","c-pr")}${seg("n","c-pe")}${seg("z","c-pa")}</div>
+      <div class="leyenda">
+        <span><i class="sw c-ok"></i>Completadas <b>${X.c}</b></span>
+        <span><i class="sw c-pr"></i>En proceso <b>${X.p}</b></span>
+        <span><i class="sw c-pe"></i>Pendientes <b>${X.n}</b></span>
+        <span><i class="sw c-pa"></i>Pausadas <b>${X.z}</b></span>
       </div>
     </div>`;
-  document.getElementById("kpis").innerHTML =
-    bloque("MACRO · BEL-RAY + APOYO AA", "Total de la mantención · cumplimiento ponderado por horas de la Gantt", M, false, k("Personas en terreno (todos los grupos)", personas, false)) +
-    (haySplit
-      ? bloque("BEL-RAY · GANTT", "OT con Actividades Programadas GANTT", Rg, false) +
-        bloque("BEL-RAY · SOLO PROGRAMADAS", "OT de Actividades Programadas que no están en la Gantt (sin horas estimadas)", Rp, true)
-      : bloque("BEL-RAY", "Cuenta para el cumplimiento de la mantención", R, false)) +
-    (datosAA.length ? bloque("APOYO AA", "Bel-Ray apoya a Anglo American", A, true) : "");
+}
 
-  const fb = document.getElementById("filtroResp");
-  if(fb){
-    const b=(k,t)=>`<button onclick="setFiltro('${k}')" style="cursor:pointer;font:inherit;font-size:12px;padding:5px 12px;border-radius:8px;border:1px solid ${filtro===k?'var(--acento,#4da3ff)':'#243049'};background:${filtro===k?'#10233f':'transparent'};color:${filtro===k?'#4da3ff':'#8A97AD'}">${t}</button>`;
-    fb.innerHTML = hayApoyo ? b('todas','Todas')+" "+b('belray','Bel-Ray')+(haySplit?" "+b('gantt','Bel-Ray · Gantt')+" "+b('prog','Bel-Ray · Solo programadas'):"")+(datosAA.length?" "+b('apoyo','Apoyo AA'):"")+(datosAN.length?" "+b('anglo','Anglo + Terceros'):"") : "";
+const TABS = [
+  {k:"gantt",  t:"Bel-Ray · Gantt",            c:"#3B82F6", full:true,  nota:"Actividades del programa Bel-Ray que están en la carta Gantt. Cada electroimán cuenta como una sola actividad junto a su correa."},
+  {k:"prog",   t:"Bel-Ray · Solo programadas", c:"#4FD1C5", full:false, nota:"Actividades programadas de Bel-Ray que no están en la Gantt (sin horas estimadas): solo cantidades."},
+  {k:"apoyo",  t:"Apoyo AA",                   c:"#A78BFA", full:true,  nota:"Bel-Ray apoya a Anglo American en estas actividades de la Gantt."},
+  {k:"anglo",  t:"Anglo + Terceros",           c:"#E3A008", full:false, nota:"Programa Anglo + Terceros: solo cantidades, no hay cumplimiento."},
+  {k:"otras",  t:"Adicionales",                c:"#8A97AD", full:false, nota:"Actividades adicionales fuera de la Gantt: solo cantidades, no hay cumplimiento."},
+];
+let tab = "gantt", chip = "todas", ultimos = [];
+function setTab(k){ tab = k; chip = "todas"; render(ultimos); }
+function setChip(k){ chip = k; render(ultimos); }
+window.setTab = setTab; window.setChip = setChip;
+function volver(){ if(history.length>1){ history.back(); } return false; }
+
+function render(todos){
+  ultimos = todos;
+  const ahora = ahoraCL();
+  const act = todos.filter(d=>grupoDe(d.respons)!=="otras");
+  const BR = act.filter(d=>grupoDe(d.respons)==="belray");
+  const haySplit = act.some(d=>d.gantt);
+  const GR = {
+    gantt: haySplit ? fusionarElectroimanes(BR.filter(d=>d.gantt)) : BR,
+    prog:  haySplit ? BR.filter(d=>!d.gantt) : [],
+    apoyo: act.filter(d=>grupoDe(d.respons)==="apoyo"),
+    anglo: act.filter(d=>grupoDe(d.respons)==="anglo"),
+    otras: todos.filter(d=>grupoDe(d.respons)==="otras"),
+  };
+  const tabs = TABS.filter(t=>t.k==="gantt" || GR[t.k].length);
+  if(!tabs.some(t=>t.k===tab)) tab = "gantt";
+  const T = tabs.find(t=>t.k===tab);
+  const rows = GR[tab];
+  const X = resumenGrupo(rows, ahora);
+  const etqGantt = haySplit ? "Bel-Ray · Gantt" : "Bel-Ray";
+
+  // ---------- tarjeta de control ----------
+  let cuerpo;
+  if(T.full){
+    const P = X.pl, ptsH = X.hrs>0;
+    cuerpo = `
+      <div class="meters">
+        ${medidor("Cumplimiento por actividades", X.pAct, `${X.acts.c} de ${X.acts.t} actividades realizadas`,
+            pct(P.actDeb, X.acts.t), `<span>Debería llevar <b class="num">${P.actDeb}</b> · llevo <b class="num">${P.actLlevo}</b></span>${brecha(P.actLlevo,P.actDeb)}`, T.c)}
+        ${medidor("Cumplimiento por OT", X.pOT, `${X.ots.c} de ${X.ots.t} OT realizadas`,
+            pct(P.otDeb, X.ots.t), `<span>Debería llevar <b class="num">${P.otDeb}</b> · llevo <b class="num">${P.otLlevo}</b></span>${brecha(P.otLlevo,P.otDeb)}`, T.c)}
+        ${medidor("Cumplimiento por horas Gantt", ptsH?X.pHrs:null, ptsH?`${X.ganadas.toFixed(1)} de ${X.hrs.toFixed(1)} h ganadas`:"sin horas Gantt",
+            ptsH?pct(P.hrsDeb, X.hrs):null, ptsH?`<span>Deberían ser <b class="num">${P.hrsDeb.toFixed(1)} h</b> · ganadas <b class="num">${P.hrsLlevo.toFixed(1)} h</b></span>${brecha(P.hrsLlevo,P.hrsDeb,"h")}`:"", T.c)}
+      </div>
+      <div class="m-leg" style="margin-top:8px"><i></i>La marca blanca indica cuánto debería llevar a esta hora según la carta Gantt.</div>
+      <div class="estados">${apilada("Actividades", X.acts)}${apilada("OT", X.ots)}</div>
+      <div class="hechos">
+        <span>Hrs Gantt de estas actividades<b>${X.hrs.toFixed(1)}</b></span>
+        <span>Hrs ganadas<b>${X.ganadas.toFixed(1)}</b></span>
+        <span>Hrs reales medidas<b>${X.real.toFixed(1)}</b></span>
+        <span>Personas en terreno<b>${X.personas}</b></span>
+      </div>
+      <div class="pie">Plan a la fecha: actividades y OT cuyo término en la Gantt ya pasó; horas con prorrateo lineal entre inicio y término.${P.sinFecha?` ${P.sinFecha} actividad${P.sinFecha===1?"":"es"} sin fecha en la Gantt no entra${P.sinFecha===1?"":"n"} al plan.`:""}</div>`;
+  } else {
+    cuerpo = `
+      <div class="estados solo">${apilada("Actividades", X.acts)}${apilada("OT", X.ots)}</div>
+      <div class="hechos"><span>Personas en terreno<b>${X.personas}</b></span></div>`;
   }
-  const base = filtro==="belray" ? datosBR : (filtro==="gantt" ? datosBRg : (filtro==="prog" ? datosBRp : (filtro==="apoyo" ? datosAA : (filtro==="anglo" ? datosAN : datosActividades))));
-  const ots = agruparPorOT(base);
+  document.getElementById("control").innerHTML = `
+    <div class="tabs" role="tablist">
+      ${tabs.map(t=>`<button class="tab${t.k===tab?" on":""}" style="--c:${t.c}" role="tab" onclick="setTab('${t.k}')">${t.k==="gantt"?etqGantt:t.t}<span class="n">${GR[t.k].length}</span></button>`).join("")}
+      <span class="corte">Corte ${fmtMsFull(ahora)}</span>
+    </div>
+    <div class="ctl-body"><div class="ctl-nota">${T.nota}</div>${cuerpo}</div>`;
 
-  // Ordena: bloqueadas primero, luego por avance ascendente
+  // ---------- listado ----------
+  const lista = document.getElementById("lista");
+  lista.style.setProperty("--c", T.c);
+  lista.style.setProperty("--panel-tint", `color-mix(in srgb, ${T.c} 7%, transparent)`);
+  if(tab==="otras"){
+    lista.innerHTML = `<div class="lista-head"><h2>Actividades · <b>Adicionales</b></h2></div>${tablaOtras(rows)}`;
+    return;
+  }
+  let ots = agruparPorOT(rows);
+  const cuenta = {c:0,p:0,n:0,z:0}; ots.forEach(o=>cuenta[o.estado]++);
+  const chips = [["todas","Todas",ots.length],["c","Completadas",cuenta.c],["p","En proceso",cuenta.p],["n","Pendientes",cuenta.n],["z","Pausadas",cuenta.z]];
+  if(chip!=="todas") ots = ots.filter(o=>o.estado===chip);
   ots.sort((a,b)=>{
-    const pa = a.bloqueado?0:1, pb = b.bloqueado?0:1;
+    const pa = a.estado==="z"?0:1, pb = b.estado==="z"?0:1;
     if(pa!==pb) return pa-pb;
     return a.avance - b.avance;
   });
+  lista.innerHTML = `
+    <div class="lista-head">
+      <h2>Frentes de trabajo · <b>${tab==="gantt"?etqGantt:T.t}</b></h2>
+      <div class="chips">${chips.map(([k,t,n])=>`<button class="chip${chip===k?" on":""}" onclick="setChip('${k}')">${t}<span class="n">${n}</span></button>`).join("")}</div>
+    </div>
+    <div class="grid">${ots.length ? cardsHtml(ots, ahora) : '<div class="empty">No hay OT en este estado.</div>'}</div>`;
+}
 
-  const grid = document.getElementById("grid");
-  if(!ots.length){ grid.innerHTML = '<div class="empty">No hay OT cargadas.</div>'; return; }
-
-  grid.innerHTML = ots.map(o=>{
-    const nv = nivel(o.avance, o.bloqueado);
-    const gente = (o.enTerreno && o.enTerreno.length)
-      ? o.enTerreno.map(p=>`<span class="persona">${p}</span>`).join(" ")
-      : '';
-    const detalle = o.bloqueado ? `⚠ ${o.bloqueado}` : `${o.actividades} act. · ${o.completadas} OK`;
+function cardsHtml(ots, ahora){
+  return ots.map(o=>{
+    const nv = NIVEL[o.estado];
+    const gente = (o.enTerreno && o.enTerreno.length) ? o.enTerreno.map(p=>`<span class="persona">${p}</span>`).join(" ") : "";
+    const vencida = o.vent && o.vent.fin <= ahora && o.estado!=="c";
+    const detalle = o.bloqueado ? `⚠ ${o.bloqueado}` : `${o.acts} act. · ${o.hechas} OK` + (o.vent ? ` · Gantt ${fmtMs(o.vent.ini)} → ${fmtMs(o.vent.fin)}` : "");
     return `
       <div class="card ${nv}">
         <div class="card-head">
-          <div>
-            <div class="equipo">${o.equipo}</div>
-            <div class="ot">OT ${o.ot}</div>
-          </div>
-          <span class="pill ${nv}">${pillText(o.avance, o.bloqueado)}</span>
+          <div><div class="equipo">${o.equipo}</div><div class="ot">OT ${o.ot}</div></div>
+          <span class="pill ${nv}">${PILL[o.estado]}</span>
         </div>
-        <div class="tags" style="min-height:18px">${["belray","apoyo","anglo"].filter(g=>(o.grupos||[]).includes(g)).map(g=>`<span class="tag ${g==='belray'?'br':'aa'}">${ETQ[g]}</span>`).join("")}${(haySplit && (o.grupos||[]).some(g=>g==='belray'||g==='apoyo')) ? (o.gantt?'<span class="tag g">EN GANTT</span>':'<span class="tag p">SOLO PROGRAMADA</span>') : ''}${o.alerta?'<span class="tag obs">⚠ OBS. PLANIF.</span>':''}</div>
+        <div class="tags">${vencida?'<span class="tag venc">FUERA DE PLAZO</span>':''}${o.alerta?'<span class="tag obs">⚠ OBS. PLANIF.</span>':''}</div>
         <div class="actividad">${detalle}</div>
         <div class="prog-wrap">
-          <div class="prog-top">
-            <span class="prog-pct">${o.avance}%</span>
-            <span class="prog-hrs">${o.hrs}h est · ${o.horasReal}h real</span>
-          </div>
+          <div class="prog-top"><span class="prog-pct">${o.avance}%</span><span class="prog-hrs">${o.hrs}h est · ${o.real}h real</span></div>
           <div class="bar"><div class="bar-fill fill-${nv}" style="width:${o.avance}%"></div></div>
         </div>
         ${gente ? `<div class="terreno"><span class="icon">●</span>${gente}</div>` : ""}
-      </div>
-    `;
+      </div>`;
   }).join("");
 }
+
+// ====== ADICIONALES (Responsabilidad = "Otras"): tabla de cantidades, sin cumplimiento ======
+function tablaOtras(filas){
+  const lista = filas.slice().sort((a,b)=>{
+    const sa = /^\d+$/.test(a.ot) ? 0 : 1, sb = /^\d+$/.test(b.ot) ? 0 : 1;
+    return sa-sb || a.ot.localeCompare(b.ot);
+  });
+  return `
+    <div class="otras-sub">No están en la carta Gantt. Solo se informa cantidad realizada.</div>
+    <table class="otras-tabla">
+      <thead><tr><th>OT</th><th>Equipo</th><th>Actividad</th><th>Estado</th><th>Avance</th></tr></thead>
+      <tbody>${lista.map(f=>`<tr>
+        <td class="mono">${f.ot && f.ot!=="-" ? f.ot : "Sin OT"}</td><td>${f.equipo}</td>
+        <td>${f.actividad}${f.obs?`<div style="color:var(--dim);font-size:11px;margin-top:2px">${f.obs}</div>`:""}</td>
+        <td>${f.estado||"—"}</td><td>${f.avance}%</td></tr>`).join("")}</tbody>
+    </table>`;
+}
+
 
 // ====== CONEXIÓN AL SHEET (dos hojas, cruce por OT) ======
 async function cargarSheet(){
@@ -484,28 +612,9 @@ function tick(){
   document.getElementById("clock").textContent = ahora;
 }
 
-// ====== OTRAS ACTIVIDADES (Responsabilidad = "Otras": tienen OT pero no están en el Gantt) ======
-function renderOtras(filas){
-  const wrap = document.getElementById("otrasWrap");
-  if(!wrap) return;
-  if(!filas.length){ wrap.innerHTML = ""; return; }
-  const lista = filas.slice().sort((a,b)=>{
-    const sa = /^\d+$/.test(a.ot) ? 0 : 1, sb = /^\d+$/.test(b.ot) ? 0 : 1;
-    return sa-sb || a.ot.localeCompare(b.ot);
-  });
-  wrap.innerHTML = `
-    <div class="otras-title">Otras actividades · ${lista.length}</div>
-    <div class="otras-sub">No están en la carta Gantt. No se incluyen en el cumplimiento.</div>
-    <table class="otras-tabla">
-      <thead><tr><th>OT</th><th>Equipo</th><th>Actividad</th><th>Estado</th><th>Avance</th></tr></thead>
-      <tbody>${lista.map(f=>`<tr>
-        <td class="mono">${f.ot && f.ot!=="-" ? f.ot : "Sin OT"}</td><td>${f.equipo}</td>
-        <td>${f.actividad}${f.obs?`<div style="color:var(--dim);font-size:11px;margin-top:2px">${f.obs}</div>`:""}</td>
-        <td>${f.estado||"—"}</td><td>${f.avance}%</td></tr>`).join("")}</tbody>
-    </table>`;
-}
 
 // Init
+(function(){ const b=document.getElementById("btnAtras"); if(history.length>1) b.classList.remove("off"); })();
 tick(); setInterval(tick, 1000);
 cargarSheet(); setInterval(cargarSheet, REFRESH_MS);
 
