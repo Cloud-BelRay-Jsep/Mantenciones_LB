@@ -100,6 +100,15 @@
   .kpi-tag{font-size:11px; font-weight:700; letter-spacing:.6px; padding:3px 10px; border-radius:6px; border:2px solid #E8EDF6; color:#E8EDF6}
   .kpi-tag.punt{border:1.5px dashed #8A97AD; color:#C9D3E3}
   .kpi-nota{font-size:12px; color:#8A97AD}
+  .kpi-tag.azul{border-color:#3B82F6; background:#3B82F6; color:#fff}
+  .kpi-fila{font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--dim); margin:8px 0 5px}
+  .kpi-grupo .kpis{margin-bottom:6px}
+  .kpis.k4{grid-template-columns:repeat(4,1fr)}
+  .kpis.k5{grid-template-columns:repeat(5,1fr)}
+  .v-ok{color:var(--verde)} .v-warn{color:var(--ambar)} .v-crit{color:var(--rojo)}
+  .bloque-br{background:var(--azulBg); border:1.5px solid var(--azul); border-radius:12px; padding:14px; margin-bottom:22px}
+  .bloque-br .kpi-titulo{margin-bottom:10px}
+  @media(max-width:640px){ .kpis.k4,.kpis.k5{grid-template-columns:repeat(2,1fr)} }
 </style>
 </head>
 <body>
@@ -116,6 +125,8 @@
   </div>
 
   <div id="kpis"></div>
+
+  <div id="bloqueBR"></div>
 
   <div class="section-title">Frentes de trabajo en tiempo real</div>
   <div id="filtroResp" style="margin:0 0 12px"></div>
@@ -181,12 +192,13 @@ function agruparPorOT(datos){
     const kOT = d.ot;   // una sola tarjeta por OT (aunque tenga actividades de distintos grupos)
     if(!mapa[kOT]){
       mapa[kOT] = {
-        ot:d.ot, equipo:d.equipo, hrsTotal:0, hrsGanadas:0, horasReal:0,
+        ot:d.ot, equipo:d.equipo, equipos:[], hrsTotal:0, hrsGanadas:0, horasReal:0,
         actividades:0, completadas:0, enProceso:0, sinIniciar:0, sumAv:0, gantt:false,
         bloqueado:"", enTerreno:[], respons:d.respons||"", grupos:[], alerta:false
       };
     }
     const g = mapa[kOT];
+    if(d.equipo && !g.equipos.includes(d.equipo)) g.equipos.push(d.equipo);
     g.hrsTotal += d.hrs;
     g.hrsGanadas += d.hrs * d.avance / 100;
     g.horasReal += d.horasReal||0;
@@ -201,7 +213,7 @@ function agruparPorOT(datos){
     if(d.enTerreno && d.enTerreno.length) g.enTerreno = g.enTerreno.concat(d.enTerreno);
   });
   return Object.values(mapa).map(g=>({
-    ot:g.ot, equipo:g.equipo,
+    ot:g.ot, equipo:g.equipos.join(" · ") || g.equipo,
     // con horas: ponderado por horas; sin horas (actividades fuera de la Gantt): promedio simple
     avance: g.hrsTotal>0 ? Math.round(g.hrsGanadas/g.hrsTotal*100) : (g.actividades ? Math.round(g.sumAv/g.actividades) : 0),
     hrs: Math.round(g.hrsTotal*10)/10,
@@ -220,102 +232,62 @@ let filtro = "todas", ultimosDatos = [];
 function setFiltro(f){ filtro=f; render(ultimosDatos); }
 window.setFiltro = setFiltro;
 
-// Una OT con actividades de varios grupos se cuenta UNA sola vez, en su grupo principal
-// (prioridad: Bel-Ray > Apoyo AA > Anglo + Terceros). Las horas y el avance sí se calculan por actividad.
-let GRUPO_PRINCIPAL = {};
-function resumen(datos, grupo){
-  const gs = [].concat(grupo||[]);
-  const ots = agruparPorOT(datos).filter(o=> !gs.length || gs.includes(GRUPO_PRINCIPAL[o.ot]));
-  const setOT = new Set(ots.map(o=>o.ot));
-  const dOk = datos.filter(d=>setOT.has(d.ot));
-  const hrs = ots.reduce((s,o)=>s+o.hrs,0);
-  const ganadas = dOk.reduce((s,d)=>s+d.hrs*d.avance/100,0);
+// Los electroimanes de las correas CT-4 y CT-3.1 cuentan como UNA sola actividad junto con su correa
+const ELECTRO_JUNTO = ["4","3.1"];
+const codCT = e => { const m=/ct-?\s*(\d+(?:\.\d+)?)/i.exec(e||""); return m?m[1]:""; };
+function fusionarElectroimanes(rows){
+  const copia = rows.map(r=>Object.assign({},r));
+  const esEl = r => /electro\s*-?\s*im[aá]n/i.test(r.equipo) && ELECTRO_JUNTO.includes(codCT(r.equipo));
+  const res = copia.filter(r=>!esEl(r));
+  copia.filter(esEl).forEach(e=>{
+    const c = res.find(r=>r.ot===e.ot && /^correa/i.test(r.equipo) && codCT(r.equipo)===codCT(e.equipo));
+    if(!c){ res.push(e); return; }
+    if(!c._n){ c._n = 1; c._sum = c.avance; c.equipo += " + Electroimán"; }
+    c._n++; c._sum += e.avance;
+    c.avance = Math.floor(c._sum/c._n);          // llega a 100% solo cuando ambos están al 100%
+    c.hrs += e.hrs; c.horasReal = (c.horasReal||0) + (e.horasReal||0);
+    if(e.actividad && e.actividad!==c.actividad) c.actividad += " + " + e.actividad;
+    if(e.enTerreno && e.enTerreno.length) c.enTerreno = (c.enTerreno||[]).concat(e.enTerreno);
+    if(e.bloqueado && !c.bloqueado) c.bloqueado = e.bloqueado;
+    if(e.alerta) c.alerta = true;
+  });
+  return res;
+}
+
+// Indicadores de un grupo: actividades y OT (completadas / en proceso / pendientes) + horas de ESAS actividades
+function indicadores(rows){
+  // pausada = actividad con "Pausado por" y sin terminar; no se cuenta como en proceso ni pendiente
+  const pausa = r => !!r.bloqueado && r.avance<100;
+  const clase = r => r.avance>=100 ? "c" : (pausa(r) ? "z" : (r.avance>0 ? "p" : "n"));
+  const acts = {t:rows.length, c:0, p:0, n:0, z:0};
+  rows.forEach(r=>acts[clase(r)]++);
+  const porOT = {};
+  rows.forEach(r=>{ (porOT[r.ot] = porOT[r.ot]||[]).push(r); });
+  const ots = {t:0, c:0, p:0, n:0, z:0};
+  Object.values(porOT).forEach(rs=>{
+    ots.t++;
+    ots[ rs.every(r=>r.avance>=100) ? "c" : (rs.some(pausa) ? "z" : (rs.some(r=>r.avance>0) ? "p" : "n")) ]++;
+  });
+  const hrs = rows.reduce((s,r)=>s+r.hrs,0);
+  const ganadas = rows.reduce((s,r)=>s+r.hrs*r.avance/100,0);
   return {
-    ots, total:ots.length,
-    completas: ots.filter(o=>o.avance>=100 && !o.bloqueado).length,
-    enProceso: ots.filter(o=>o.avance>0 && o.avance<100 && !o.bloqueado).length,
-    sinIniciar: ots.filter(o=>o.avance===0 && !o.bloqueado).length,
-    pausadas: ots.filter(o=>o.bloqueado).length,
-    hrs, real: ots.reduce((s,o)=>s+o.horasReal,0),
-    // ponderado por horas Gantt; si no hay horas, promedio simple de avance
-    avance: hrs>0 ? Math.round(ganadas/hrs*100) : (dOk.length ? Math.round(dOk.reduce((s,d)=>s+d.avance,0)/dOk.length) : 0)
+    acts, ots, hrs, real: rows.reduce((s,r)=>s+(r.horasReal||0),0),
+    // ponderado por horas; si no hay horas, promedio simple
+    avance: hrs>0 ? Math.round(ganadas/hrs*100) : (rows.length ? Math.round(rows.reduce((s,r)=>s+r.avance,0)/rows.length) : 0)
   };
 }
 
-function render(todosLosDatos){
-  ultimosDatos = todosLosDatos;
-  const datosOtras = todosLosDatos.filter(d=>grupoDe(d.respons)==="otras");
-  const datosActividades = todosLosDatos.filter(d=>grupoDe(d.respons)!=="otras");
-  renderOtras(datosOtras);
-  const datosBR = datosActividades.filter(d=>grupoDe(d.respons)==="belray");
-  const datosAA = datosActividades.filter(d=>grupoDe(d.respons)==="apoyo");
-  const datosAN = datosActividades.filter(d=>grupoDe(d.respons)==="anglo");
-  const hayApoyo = datosAA.length>0 || datosAN.length>0;
-  GRUPO_PRINCIPAL = {};
-  const PRIO = ["belray","apoyo","anglo"];
-  datosActividades.forEach(d=>{
-    const g = grupoDe(d.respons), cur = GRUPO_PRINCIPAL[d.ot];
-    if(!cur || PRIO.indexOf(g) < PRIO.indexOf(cur)) GRUPO_PRINCIPAL[d.ot] = g;
-  });
-  // Una OT es "GANTT" si alguna de sus actividades tiene Tipo Actividad = Actividades Programadas GANTT
-  const TIPO_OT = {};
-  datosActividades.forEach(d=>{ if(d.gantt) TIPO_OT[d.ot] = true; });
-  const esG = d => !!TIPO_OT[d.ot];
-  const haySplit = datosActividades.some(d=>d.gantt);
-  const datosBRg = datosBR.filter(esG), datosBRp = datosBR.filter(d=>!esG(d));
-  const M = resumen(datosBR.concat(datosAA), ["belray","apoyo"]);   // MACRO: Bel-Ray + Apoyo AA
-  const R = resumen(datosBR, "belray");
-  const Rg = resumen(datosBRg, "belray");
-  const Rp = resumen(datosBRp, "belray");
-  const A = resumen(datosAA, "apoyo");
-  const N = resumen(datosAN, "anglo");
-  const personas = [...new Set(agruparPorOT(datosActividades).flatMap(o=>o.enTerreno))].length;
-
-  // Un bloque de indicadores por grupo, con su etiqueta de texto (sin depender del color):
-  // Bel-Ray = borde sólido · Apoyo AA y Anglo + Terceros = borde punteado
-  const k = (l,v,punt)=>`<div class="kpi"${punt?' style="border-style:dashed"':''}><div class="label">${l}</div><div class="value">${v}</div></div>`;
-  const bloque = (etq, nota, X, punt, extra)=>`
-    <div class="kpi-grupo">
-      <div class="kpi-titulo"><span class="kpi-tag${punt?' punt':''}">${etq}</span><span class="kpi-nota">${nota}</span></div>
-      <div class="kpis">
-        ${k(punt?"Avance":"Cumplimiento", X.avance+"<small>%</small>", punt)}
-        ${k("OT", X.total, punt)}
-        ${k("Completadas", X.completas+"<small>/"+X.total+"</small>", punt)}
-        ${k("En proceso", X.enProceso, punt)}
-        ${k("Sin iniciar", X.sinIniciar, punt)}
-        ${k("Pausadas", X.pausadas, punt)}
-        ${k("Hrs estimadas (Gantt)", X.hrs.toFixed(1), punt)}
-        ${k("Hrs reales medidas", X.real.toFixed(1), punt)}
-        ${extra||""}
-      </div>
-    </div>`;
-  document.getElementById("kpis").innerHTML =
-    bloque("MACRO · BEL-RAY + APOYO AA", "Total de la mantención · cumplimiento ponderado por horas de la Gantt", M, false, k("Personas en terreno (todos los grupos)", personas, false)) +
-    (haySplit
-      ? bloque("BEL-RAY · GANTT", "OT con Actividades Programadas GANTT", Rg, false) +
-        bloque("BEL-RAY · SOLO PROGRAMADAS", "OT de Actividades Programadas que no están en la Gantt (sin horas estimadas)", Rp, true)
-      : bloque("BEL-RAY", "Cuenta para el cumplimiento de la mantención", R, false)) +
-    (datosAA.length ? bloque("APOYO AA", "Bel-Ray apoya a Anglo American", A, true) : "");
-
-  const fb = document.getElementById("filtroResp");
-  if(fb){
-    const b=(k,t)=>`<button onclick="setFiltro('${k}')" style="cursor:pointer;font:inherit;font-size:12px;padding:5px 12px;border-radius:8px;border:1px solid ${filtro===k?'var(--acento,#4da3ff)':'#243049'};background:${filtro===k?'#10233f':'transparent'};color:${filtro===k?'#4da3ff':'#8A97AD'}">${t}</button>`;
-    fb.innerHTML = hayApoyo ? b('todas','Todas')+" "+b('belray','Bel-Ray')+(haySplit?" "+b('gantt','Bel-Ray · Gantt')+" "+b('prog','Bel-Ray · Solo programadas'):"")+(datosAA.length?" "+b('apoyo','Apoyo AA'):"")+(datosAN.length?" "+b('anglo','Anglo + Terceros'):"") : "";
-  }
-  const base = filtro==="belray" ? datosBR : (filtro==="gantt" ? datosBRg : (filtro==="prog" ? datosBRp : (filtro==="apoyo" ? datosAA : (filtro==="anglo" ? datosAN : datosActividades))));
-  const ots = agruparPorOT(base);
-
-  // Ordena: bloqueadas primero, luego por avance ascendente
-  ots.sort((a,b)=>{
+function ordenarOT(ots){
+  // bloqueadas primero, luego por avance ascendente
+  return ots.sort((a,b)=>{
     const pa = a.bloqueado?0:1, pb = b.bloqueado?0:1;
     if(pa!==pb) return pa-pb;
     return a.avance - b.avance;
   });
+}
 
-  const grid = document.getElementById("grid");
-  if(!ots.length){ grid.innerHTML = '<div class="empty">No hay OT cargadas.</div>'; return; }
-
-  grid.innerHTML = ots.map(o=>{
+function cardsHtml(ots, haySplit){
+  return ots.map(o=>{
     const nv = nivel(o.avance, o.bloqueado);
     const gente = (o.enTerreno && o.enTerreno.length)
       ? o.enTerreno.map(p=>`<span class="persona">${p}</span>`).join(" ")
@@ -343,6 +315,82 @@ function render(todosLosDatos){
       </div>
     `;
   }).join("");
+}
+
+function render(todosLosDatos){
+  ultimosDatos = todosLosDatos;
+  const datosOtras = todosLosDatos.filter(d=>grupoDe(d.respons)==="otras");
+  const datosActividades = todosLosDatos.filter(d=>grupoDe(d.respons)!=="otras");
+  renderOtras(datosOtras);
+  const datosBR = datosActividades.filter(d=>grupoDe(d.respons)==="belray");
+  const datosAA = datosActividades.filter(d=>grupoDe(d.respons)==="apoyo");
+  const datosAN = datosActividades.filter(d=>grupoDe(d.respons)==="anglo");
+  const hayApoyo = datosAA.length>0 || datosAN.length>0;
+  // Si hay actividades marcadas "Actividades Programadas GANTT", Bel-Ray se separa en GANTT y solo programadas
+  const haySplit = datosActividades.some(d=>d.gantt);
+  const datosBRg = haySplit ? fusionarElectroimanes(datosBR.filter(d=>d.gantt)) : datosBR;
+  const datosBRp = haySplit ? datosBR.filter(d=>!d.gantt) : [];
+  const G = indicadores(datosBRg);
+  const A = indicadores(datosAA);
+  const N = indicadores(datosAN);
+  const personas = [...new Set(agruparPorOT(datosActividades).flatMap(o=>o.enTerreno))].length;
+
+  // Bloques de indicadores: 1) Bel-Ray programadas GANTT (general)  2) Apoyo AA  3) Anglo + Terceros
+  // Bel-Ray = borde sólido · Apoyo AA y Anglo + Terceros = borde punteado
+  const k = (l,v,punt,cls)=>`<div class="kpi"${punt?' style="border-style:dashed"':''}><div class="label">${l}</div><div class="value ${cls||''}">${v}</div></div>`;
+  const bloque = (etq, nota, X, punt, extra, azul)=>`
+    <div class="kpi-grupo">
+      <div class="kpi-titulo"><span class="kpi-tag${punt?' punt':''}${azul?' azul':''}">${etq}</span><span class="kpi-nota">${nota}</span></div>
+      <div class="kpi-fila">Actividades</div>
+      <div class="kpis k5">
+        ${k("Actividades totales", X.acts.t, punt)}
+        ${k("Completadas", X.acts.c, punt, "v-ok")}
+        ${k("En proceso", X.acts.p, punt, "v-warn")}
+        ${k("Pendientes", X.acts.n, punt, "v-crit")}
+        ${k("Pausadas", X.acts.z, punt)}
+      </div>
+      <div class="kpi-fila">OT</div>
+      <div class="kpis k5">
+        ${k("OT totales", X.ots.t, punt)}
+        ${k("Completadas", X.ots.c, punt, "v-ok")}
+        ${k("En proceso", X.ots.p, punt, "v-warn")}
+        ${k("Pendientes", X.ots.n, punt, "v-crit")}
+        ${k("Pausadas", X.ots.z, punt)}
+      </div>
+      <div class="kpi-fila">Avance y horas</div>
+      <div class="kpis k4">
+        ${k(punt?"Avance":"Cumplimiento", X.avance+"<small>%</small>", punt)}
+        ${k("Hrs Gantt de estas actividades", X.hrs.toFixed(1), punt)}
+        ${k("Hrs reales medidas", X.real.toFixed(1), punt)}
+        ${extra||""}
+      </div>
+    </div>`;
+  const tituloBR = haySplit ? "BEL-RAY · PROGRAMADAS GANTT" : "BEL-RAY";
+  document.getElementById("kpis").innerHTML =
+    bloque(tituloBR, haySplit ? "Solo actividades del programa Bel-Ray que están en la carta Gantt · los electroimanes CT-4 y CT-3.1 cuentan junto a su correa"
+                              : "Programa Bel-Ray", G, false, k("Personas en terreno (todos los grupos)", personas, false), true) +
+    (datosAA.length ? bloque("APOYO AA", "Bel-Ray apoya a Anglo American", A, true) : "") +
+    (datosAN.length ? bloque("ANGLO + TERCEROS", "Programa Anglo y terceros · no cuenta para el cumplimiento Bel-Ray", N, true) : "");
+
+  // Bloque azul con el listado Bel-Ray (programadas Gantt)
+  const otsG = ordenarOT(agruparPorOT(datosBRg));
+  document.getElementById("bloqueBR").innerHTML = otsG.length ? `
+    <div class="bloque-br">
+      <div class="kpi-titulo"><span class="kpi-tag azul">${tituloBR}</span><span class="kpi-nota">${otsG.length} OT · ${G.acts.t} actividades</span></div>
+      <div class="grid">${cardsHtml(otsG, haySplit)}</div>
+    </div>` : "";
+
+  const fb = document.getElementById("filtroResp");
+  if(fb){
+    const b=(k,t)=>`<button onclick="setFiltro('${k}')" style="cursor:pointer;font:inherit;font-size:12px;padding:5px 12px;border-radius:8px;border:1px solid ${filtro===k?'var(--acento,#4da3ff)':'#243049'};background:${filtro===k?'#10233f':'transparent'};color:${filtro===k?'#4da3ff':'#8A97AD'}">${t}</button>`;
+    fb.innerHTML = hayApoyo ? b('todas','Todas')+" "+b('belray','Bel-Ray')+(haySplit?" "+b('gantt','Bel-Ray · Gantt')+" "+b('prog','Bel-Ray · Solo programadas'):"")+(datosAA.length?" "+b('apoyo','Apoyo AA'):"")+(datosAN.length?" "+b('anglo','Anglo + Terceros'):"") : "";
+  }
+  const base = filtro==="belray" ? datosBR : (filtro==="gantt" ? datosBRg : (filtro==="prog" ? datosBRp : (filtro==="apoyo" ? datosAA : (filtro==="anglo" ? datosAN : datosActividades))));
+  const ots = ordenarOT(agruparPorOT(base));
+
+  const grid = document.getElementById("grid");
+  if(!ots.length){ grid.innerHTML = '<div class="empty">No hay OT cargadas.</div>'; return; }
+  grid.innerHTML = cardsHtml(ots, haySplit);
 }
 
 // ====== CONEXIÓN AL SHEET (dos hojas, cruce por OT) ======
