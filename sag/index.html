@@ -346,11 +346,10 @@ function apilada(titulo, X){
 }
 
 const TABS = [
-  {k:"gantt",  t:"Bel-Ray · Gantt",            c:"#3B82F6", full:true,  nota:"Actividades del programa Bel-Ray que están en la carta Gantt. Cada electroimán cuenta como una sola actividad junto a su correa."},
-  {k:"prog",   t:"Bel-Ray · Solo programadas", c:"#4FD1C5", full:false, nota:"Actividades programadas de Bel-Ray que no están en la Gantt (sin horas estimadas): avance por cantidad de actividades y OT."},
-  {k:"apoyo",  t:"Apoyo AA",                   c:"#A78BFA", full:true,  nota:"Bel-Ray apoya a Anglo American en estas actividades de la Gantt."},
-  {k:"anglo",  t:"Anglo + Terceros",           c:"#E3A008", full:false, nota:"Programa Anglo + Terceros: avance por cantidad de actividades y OT, sin horas."},
-  {k:"otras",  t:"Adicionales",                c:"#8A97AD", full:false, nota:"Actividades adicionales fuera de la Gantt: avance por cantidad de actividades y OT, sin horas."},
+  {k:"gantt",  t:"Bel-Ray · Gantt",          c:"#3B82F6", full:true,  nota:"Actividades del programa Bel-Ray que están en la carta Gantt. Cada electroimán cuenta como una sola actividad junto a su correa."},
+  {k:"apoyo",  t:"BR + AA Gantt",              c:"#A78BFA", full:true,  nota:"Actividades de la Gantt en que Bel-Ray apoya a Anglo American (Apoyo AA)."},
+  {k:"prog",   t:"Actividades Complementarias", c:"#4FD1C5", full:false, nota:"Actividades programadas de Bel-Ray que no están en la Gantt (sin horas estimadas): avance por cantidad de actividades y OT."},
+  {k:"adic",   t:"Adicionales",                c:"#E3A008", full:false, nota:"Programa Anglo + Terceros y actividades adicionales, solo las que ya registran avance mayor a 0%. Avance por cantidad de actividades y OT, sin horas."},
 ];
 let tab = "gantt", chip = "todas", ultimos = [];
 function setTab(k){ tab = k; chip = "todas"; render(ultimos); }
@@ -368,10 +367,9 @@ function render(todos){
     gantt: haySplit ? fusionarElectroimanes(BR.filter(d=>d.gantt)) : BR,
     prog:  haySplit ? BR.filter(d=>!d.gantt) : [],
     apoyo: act.filter(d=>grupoDe(d.respons)==="apoyo"),
-    anglo: act.filter(d=>grupoDe(d.respons)==="anglo"),
-    otras: todos.filter(d=>grupoDe(d.respons)==="otras"),
+    adic:  todos.filter(d=>/anglo|otras/.test(grupoDe(d.respons)) && d.avance>0),
   };
-  const tabs = TABS.filter(t=>t.k==="gantt" || GR[t.k].length);
+  const tabs = TABS;
   if(!tabs.some(t=>t.k===tab)) tab = "gantt";
   const T = tabs.find(t=>t.k===tab);
   const rows = GR[tab];
@@ -420,7 +418,7 @@ function render(todos){
   const lista = document.getElementById("lista");
   lista.style.setProperty("--c", T.c);
   lista.style.setProperty("--panel-tint", `color-mix(in srgb, ${T.c} 7%, transparent)`);
-  if(tab==="otras"){
+  if(tab==="adic"){
     lista.innerHTML = `<div class="lista-head"><h2>Actividades · <b>Adicionales</b></h2></div>${tablaOtras(rows)}`;
     return;
   }
@@ -468,16 +466,17 @@ function cardsHtml(ots, ahora){
 
 // ====== ADICIONALES (Responsabilidad = "Otras"): tabla de cantidades, sin cumplimiento ======
 function tablaOtras(filas){
+  if(!filas.length) return '<div class="empty">Aún no hay actividades de Anglo + Terceros ni adicionales con avance mayor a 0%.</div>';
   const lista = filas.slice().sort((a,b)=>{
     const sa = /^\d+$/.test(a.ot) ? 0 : 1, sb = /^\d+$/.test(b.ot) ? 0 : 1;
     return sa-sb || a.ot.localeCompare(b.ot);
   });
   return `
-    <div class="otras-sub">No están en la carta Gantt. Solo se informa cantidad realizada.</div>
+    <div class="otras-sub">Solo actividades con avance mayor a 0%. No están en la carta Gantt: se informa cantidad realizada.</div>
     <table class="otras-tabla">
-      <thead><tr><th>OT</th><th>Equipo</th><th>Componente</th><th>Actividad</th><th>Estado</th><th>Avance</th></tr></thead>
+      <thead><tr><th>OT</th><th>Programa</th><th>Equipo</th><th>Componente</th><th>Actividad</th><th>Estado</th><th>Avance</th></tr></thead>
       <tbody>${lista.map(f=>`<tr>
-        <td class="mono">${f.ot && f.ot!=="-" ? f.ot : "Sin OT"}</td><td>${f.equipo}</td><td>${f.comp||"—"}</td>
+        <td class="mono">${f.ot && f.ot!=="-" ? f.ot : "Sin OT"}</td><td>${grupoDe(f.respons)==="anglo"?"Anglo + Terceros":"Adicional"}</td><td>${f.equipo}</td><td>${f.comp||"—"}</td>
         <td>${f.actividad}${f.obs?`<div style="color:var(--dim);font-size:11px;margin-top:2px">${f.obs}</div>`:""}</td>
         <td>${f.estado||"—"}</td><td>${f.avance}%</td></tr>`).join("")}</tbody>
     </table>`;
