@@ -370,6 +370,7 @@ async function cargarCaptura(){
     alcance: headers.findIndex(h=>h.startsWith("alcance")),
     alerta: headers.findIndex(h=>h.startsWith("alerta")),
     bloqueado: headers.findIndex(h=>h.includes("bloqueado")||h.includes("pausado")),
+    tipoAct: headers.findIndex(h=>h==="tipo actividad"),
   };
   const filas = [];
   for(let i=hIdx+1;i<lineas.length;i++){
@@ -387,9 +388,11 @@ async function cargarCaptura(){
       respons: idx.respons>=0 ? (c[idx.respons]||"").trim() : "",
       obs: idx.obs>=0 ? (c[idx.obs]||"").trim() : "",
       alcance: idx.alcance>=0 ? (c[idx.alcance]||"").trim() : "",
-      alerta: idx.alerta>=0 ? /^s[ií]/i.test((c[idx.alerta]||"").trim()) : false
+      alerta: idx.alerta>=0 ? /^s[ií]/i.test((c[idx.alerta]||"").trim()) : false,
+      gantt: idx.tipoAct>=0 ? /gantt/i.test(c[idx.tipoAct]||"") : false
     });
   }
+  filas.hayGantt = filas.some(f=>f.gantt);
   return filas;
 }
 
@@ -782,7 +785,7 @@ function grupoDe(r){
   if(/anglo|tercero/i.test(r)) return "anglo";
   return "belray";
 }
-const ETQ_GRUPO = {belray:"BEL-RAY", apoyo:"APOYO AA", anglo:"ANGLO + TERCEROS", otras:"OTRAS"};
+const ETQ_GRUPO = {belray:"BEL-RAY", apoyo:"BR + AA GANTT", anglo:"ANGLO + TERCEROS", otras:"OTRAS"};
 function badgeResp(r){
   if(!r) return "";
   const g = grupoDe(r);
@@ -796,6 +799,13 @@ function esApoyo(o){ // OT sin ninguna actividad Bel-Ray → borde punteado
   const gs = o.grupos && o.grupos.length ? o.grupos : [grupoDe(o.respons)];
   return !gs.includes("belray");
 }
+// Pestañas del Panel MM: Bel-Ray · Gantt | BR + AA Gantt | Actividades Complementarias | Adicionales (Anglo + Terceros y otras, solo con avance > 0)
+function categoriaDe(a, hayGantt){
+  const g = grupoDe(a.respons);
+  if(g==="apoyo") return "apoyo";
+  if(g==="belray") return (!hayGantt || a.gantt) ? "gantt" : "comp";
+  return a.avance>0 ? "adic" : "";
+}
 let filtroResp = "todas";
 function cambiarFiltro(f){ filtroResp=f; renderVista(); }
 window.cambiarFiltro = cambiarFiltro;
@@ -804,7 +814,7 @@ function normTxt(t){ return String(t||"").normalize("NFD").replace(/[\u0300-\u03
 function otsFiltradas(){
   const toks = normTxt(textoBusqueda).split(/\s+/).filter(Boolean);
   return otsGlobal.filter(o=>{
-    if(!(filtroResp==="todas" || (o.grupos||[]).includes(filtroResp))) return false;
+    if(!(filtroResp==="todas" || (o.cats||[]).includes(filtroResp))) return false;
     if(!toks.length) return true;
     const q = normTxt([o.ot, o.equipo, o.actividad, o.componente, o.txt].join(" "));
     return toks.every(t=>q.includes(t));
@@ -821,11 +831,10 @@ function buscadorHtml(){
   return `<div class="buscador-ot"><input id="buscarOT" type="search" value="${textoBusqueda.replace(/"/g,'&quot;')}" placeholder="Buscar por equipo u OT (ej: Correa CT-4 o 4016182682)" autocomplete="off" spellcheck="false" oninput="buscarOT(this.value)">${n!==null?`<div class="buscador-cnt">${n} de ${otsGlobal.length} OT</div>`:""}</div>`;
 }
 function filtroHtml(){
-  const hayOtros = otsGlobal.some(o=>(o.grupos||[]).some(g=>g!=="belray"));
-  if(!hayOtros) return "";
+  const hay = c => otsGlobal.some(o=>(o.cats||[]).includes(c));
+  if(!(hay("comp")||hay("apoyo")||hay("adic"))) return "";
   const b=(k,t)=>`<button class="vt-btn ${filtroResp===k?'activo':''}" onclick="cambiarFiltro('${k}')">${t}</button>`;
-  const hay = g => otsGlobal.some(o=>(o.grupos||[]).includes(g));
-  return `<div class="filtro-resp">${b('todas','Todas')}${hay('belray')?b('belray','Bel-Ray'):''}${hay('apoyo')?b('apoyo','Apoyo AA'):''}${hay('anglo')?b('anglo','Anglo + Terceros'):''}${hay('otras')?b('otras','Otras'):''}</div>`;
+  return `<div class="filtro-resp">${b('todas','Todas')}${b('gantt','Bel-Ray · Gantt')}${b('apoyo','BR + AA Gantt')}${b('comp','Actividades Complementarias')}${b('adic','Adicionales')}</div>`;
 }
 let otsGlobal = [];
 let vistaActual = "lista";
@@ -1216,7 +1225,7 @@ async function cargarTodo(){
           vistas[kv] = { ot:a.ot, equipo:a.equipo, actividad:a.actividad, componente:a.componente,
                             fechaInicio: g ? parseFechaHoraCL(g[0]) : null,
                             fechaTermino: g ? parseFechaHoraCL(g[1]) : null,
-                            hrsTotal:0, hrsGanadas:0, sumAv:0, nAct:0, txt:"", bloqueado:"", respons:a.respons, grupos:[], alerta:false };
+                            hrsTotal:0, hrsGanadas:0, sumAv:0, nAct:0, txt:"", bloqueado:"", respons:a.respons, grupos:[], cats:[], alerta:false };
           otsUnicas.push(vistas[kv]);
         }
         const g = vistas[kv];
@@ -1226,7 +1235,8 @@ async function cargarTodo(){
         g.txt += " " + [a.equipo, a.actividad, a.componente].join(" ");
         if(a.bloqueado && !g.bloqueado) g.bloqueado = a.bloqueado;
         if(a.alerta) g.alerta = true;
-        { const gg = grupoDe(a.respons); if(!g.grupos.includes(gg)) g.grupos.push(gg); }
+        { const gg = grupoDe(a.respons); if(!g.grupos.includes(gg)) g.grupos.push(gg);
+          const cat = categoriaDe(a, captura.hayGantt); if(cat && !g.cats.includes(cat)) g.cats.push(cat); }
       });
       otsUnicas.forEach(o=>{ o.avance = o.hrsTotal>0 ? Math.round(o.hrsGanadas/o.hrsTotal*100) : (o.nAct ? Math.round(o.sumAv/o.nAct) : 0); });
       renderSelector(otsUnicas);
